@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Kingdom Dice Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   KINGDOM DICE FORGE — Complete UI redesign for 16:9 desktop
+   Layout: fixed-height, no page scroll, three-panel + bottom bar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── THEME VARS ── */
+:root{
+  --bg:#2a1f0e;--bg-mid:#1e1608;--bg-panel:#221a0a;--bg-deep:#150f04;
+  --border:#7a5a18;--border-light:#b08030;
+  --text:#f0e8d0;--text-dim:#c8a870;--text-faint:#806838;
+  --gold:#f5c842;--gold-bright:#f5c842;--gold-glow:#ffe080;
+  --red:#f06050;--red-bg:#2a0808;--red-bdr:#802020;
+  --perm-red:#ff4040;--perm-bg:#1e0404;--perm-bdr:#aa1818;
+  --green:#80d840;--green-bg:#0e2008;--green-bdr:#408018;
+  --purple:#c080ff;--purple-bg:#180830;--purple-bdr:#6030a0;
+  --blue:#60b8f8;
+  --die-bg:#2e2008;--die-border:#8a6020;
+  --canvas-table:#1a3010;
+  --shadow:0 2px 8px rgba(0,0,0,.5);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.7);
+  --bar-h:68px;
+  --left-w:280px;
+  --right-w:340px;
+  --hdr-h:58px;
+}
+body.theme-parchment{
+  --bg:#f4ead0;--bg-mid:#ede0be;--bg-panel:#faf4e4;--bg-deep:#e8d5a8;
+  --border:#a07828;--border-light:#c8a840;
+  --text:#1a1004;--text-dim:#5a3c10;--text-faint:#8a5c20;
+  --gold:#8a5c10;--gold-bright:#b07820;--gold-glow:#d4a030;
+  --red:#b01818;--red-bg:#fdf0f0;--red-bdr:#d04040;
+  --perm-red:#cc0000;--perm-bg:#fff0f0;--perm-bdr:#cc2020;
+  --green:#1a6010;--green-bg:#f0fae8;--green-bdr:#4a9020;
+  --purple:#5020a0;--purple-bg:#f4eeff;--purple-bdr:#8040d0;
+  --blue:#1050a0;
+  --die-bg:#f0e0b0;--die-border:#a07020;
+  --canvas-table:#c8a860;
+  --shadow:0 2px 8px rgba(0,0,0,.15);
+  --shadow-lg:0 4px 20px rgba(0,0,0,.2);
+}
+body.theme-royal{
+  --bg:#0c1428;--bg-mid:#111e38;--bg-panel:#162040;--bg-deep:#090f1e;
+  --border:#2848a0;--border-light:#5070c8;
+  --text:#d0dcff;--text-dim:#8098d0;--text-faint:#4860a8;
+  --gold:#f5c842;--gold-bright:#f5c842;--gold-glow:#ffe080;
+  --red:#f05060;--red-bg:#200814;--red-bdr:#802040;
+  --perm-red:#ff3050;--perm-bg:#180310;--perm-bdr:#c01830;
+  --green:#40d880;--green-bg:#082018;--green-bdr:#208050;
+  --purple:#b060ff;--purple-bg:#180830;--purple-bdr:#6030c0;
+  --blue:#4090f8;
+  --die-bg:#162040;--die-border:#4060c0;
+  --canvas-table:#0c183a;
+  --shadow:0 2px 8px rgba(0,0,40,.5);
+  --shadow-lg:0 4px 20px rgba(0,0,40,.7);
+}
+body.theme-forest{
+  --bg:#0e1e0a;--bg-mid:#162210;--bg-panel:#182814;--bg-deep:#0a1408;
+  --border:#3a6818;--border-light:#5a9830;
+  --text:#d0ecc0;--text-dim:#80b060;--text-faint:#408030;
+  --gold:#d8c040;--gold-bright:#d8c040;--gold-glow:#f0e060;
+  --red:#f06040;--red-bg:#200806;--red-bdr:#803020;
+  --perm-red:#ff4030;--perm-bg:#1a0404;--perm-bdr:#a01818;
+  --green:#60e040;--green-bg:#0a2008;--green-bdr:#308020;
+  --purple:#c080e0;--purple-bg:#180828;--purple-bdr:#6030a0;
+  --blue:#50b8e0;
+  --die-bg:#162010;--die-border:#4a7820;
+  --canvas-table:#182808;
+  --shadow:0 2px 8px rgba(0,10,0,.5);
+  --shadow-lg:0 4px 20px rgba(0,10,0,.7);
+}
+
+/* ── RESET & BASE ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+html{font-size:19px;}
+body{font-family:'Crimson Text',Georgia,serif;background:var(--bg);color:var(--text);line-height:1.4;}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── SCROLLBARS ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg-deep);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ═══════════════════════════ HEADER BAR ═══════════════════════════ */
+.top-bar{
+  height:var(--hdr-h);min-height:var(--hdr-h);flex-shrink:0;
+  background:var(--bg-panel);border-bottom:2px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:12px;position:relative;
+}
+.top-bar-title{
+  font-family:'Cinzel',serif;font-size:.95em;font-weight:900;
+  color:var(--gold-bright);letter-spacing:2px;white-space:nowrap;flex-shrink:0;
+}
+.top-bar-season{
+  font-family:'Cinzel',serif;font-size:.75em;color:var(--text-dim);
+  white-space:nowrap;flex-shrink:0;letter-spacing:1px;
+}
+.top-bar-track{display:flex;align-items:center;gap:3px;flex:1;overflow:hidden;padding:0 6px;}
+.s-pip{
+  width:20px;height:20px;border-radius:50%;border:1px solid var(--border);
+  background:var(--bg-mid);display:flex;align-items:center;justify-content:center;
+  font-size:.55em;font-family:'Cinzel',serif;color:var(--text-faint);
+  flex-shrink:0;transition:all .3s;
+}
+.s-pip.done{background:var(--bg-deep);color:var(--text-faint);}
+.s-pip.active{background:var(--gold-bright);border-color:var(--gold-bright);color:#1a0;font-weight:bold;box-shadow:0 0 8px var(--gold-glow);}
+.top-bar-status{
+  font-size:.75em;color:var(--text-dim);font-style:italic;
+  white-space:nowrap;flex-shrink:0;
+}
+.top-bar-status strong{color:var(--gold-bright);}
+.settings-btn{
+  background:var(--bg-mid);border:1px solid var(--border);border-radius:6px;
+  padding:4px 9px;cursor:pointer;color:var(--text-dim);
+  font-family:'Cinzel',serif;font-size:.7em;letter-spacing:1px;
+  transition:all .2s;flex-shrink:0;
+}
+.settings-btn:hover{border-color:var(--gold-bright);color:var(--gold-bright);}
+
+/* ═══════════════════════════ MAIN AREA ═══════════════════════════ */
+.main-area{
+  flex:1;display:flex;overflow:hidden;
+  /* subtract top bar and bottom bar */
+  min-height:0;
+}
+
+/* ═══════════════════════════ LEFT PANEL ═══════════════════════════ */
+.left-panel{
+  width:var(--left-w);min-width:var(--left-w);flex-shrink:0;
+  background:var(--bg-panel);border-right:2px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+}
+.lp-section{border-bottom:1px solid var(--border);padding:10px 12px;}
+.lp-title{
+  font-family:'Cinzel',serif;font-size:.6em;letter-spacing:2px;
+  color:var(--gold-bright);text-transform:uppercase;margin-bottom:8px;
+  border-bottom:1px solid var(--border);padding-bottom:4px;
+}
+.res-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.res-row:last-child{margin-bottom:0;}
+.res-icon{font-size:1.1em;width:22px;text-align:center;flex-shrink:0;}
+.res-val{font-family:'Cinzel',serif;font-size:1.15em;font-weight:700;color:var(--text);min-width:28px;}
+.res-label{font-size:.68em;color:var(--text-faint);flex:1;}
+.res-prod{font-size:.68em;color:var(--green);font-weight:700;margin-left:auto;white-space:nowrap;}
+
+/* Prestige section */
+.glory-num{font-family:'Cinzel',serif;font-size:2em;font-weight:700;color:var(--purple);line-height:1;}
+.glory-label{font-size:.68em;color:var(--text-faint);letter-spacing:1px;margin-bottom:6px;}
+.rank-name{font-family:'Cinzel',serif;font-size:.8em;color:var(--gold-bright);margin-bottom:3px;}
+.rank-next{font-size:.63em;color:var(--text-faint);margin-bottom:5px;}
+.prog-track{background:var(--bg-deep);border-radius:3px;height:5px;border:1px solid var(--border);overflow:hidden;margin-bottom:5px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--gold-glow));transition:width .5s;}
+.target-row{display:flex;justify-content:space-between;align-items:center;font-size:.68em;}
+.target-lbl{color:var(--text-faint);}
+.target-val{color:var(--purple);font-weight:700;font-family:'Cinzel',serif;}
+.curse-chip{
+  margin-top:6px;display:flex;align-items:center;gap:5px;
+  font-size:.68em;padding:4px 7px;border-radius:5px;
+  border:1px solid var(--border);background:var(--bg-deep);
+}
+.curse-chip.danger{border-color:var(--perm-bdr);background:var(--perm-bg);color:var(--perm-red);}
+.curse-chip.warn{border-color:var(--red-bdr);background:var(--red-bg);color:var(--red);}
+
+/* Kingdom buildings in left panel */
+.kv-list{display:flex;flex-direction:column;gap:5px;padding:8px 12px;}
+.kv-item{display:flex;align-items:center;gap:7px;font-size:.75em;color:var(--text-dim);}
+.kv-item-icon{font-size:1.1em;flex-shrink:0;}
+.kv-item-name{flex:1;font-family:'Cinzel',serif;font-size:.8em;color:var(--text);letter-spacing:.5px;}
+.kv-item-tier{font-size:.62em;color:var(--gold-bright);letter-spacing:1px;}
+.kv-item-prod{font-size:.62em;color:var(--green);margin-left:auto;}
+.kv-empty{font-size:.75em;color:var(--text-faint);font-style:italic;padding:8px 12px;}
+
+/* ═══════════════════════════ CENTRE PANEL ═══════════════════════════ */
+.centre-panel{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;
+  background:var(--bg-deep);
+}
+/* Kingdom visual — top half of centre */
+.kingdom-visual{
+  flex:1;min-height:0;
+  background:var(--bg-panel);border-bottom:2px solid var(--border);
+  display:flex;align-items:flex-end;gap:12px;padding:10px 14px;
+  overflow-x:auto;overflow-y:hidden;
+}
+.kingdom-visual::-webkit-scrollbar{height:4px;}
+.kingdom-visual::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.kv-building{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;cursor:default;transition:transform .2s;}
+.kv-building:hover{transform:translateY(-3px);}
+.kv-img-wrap{
+  width:130px;height:100px;border-radius:8px;border:2px solid var(--border-light);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+  background:var(--bg-mid);position:relative;transition:border-color .3s,box-shadow .3s;
+}
+.kv-building.tier1 .kv-img-wrap{opacity:.85;}
+.kv-building.tier2 .kv-img-wrap{border-color:var(--border);}
+.kv-building.tier3 .kv-img-wrap{border-color:var(--gold-bright);box-shadow:0 0 10px rgba(245,200,66,.35);}
+.kv-building.tier4 .kv-img-wrap{border-color:var(--gold-bright);box-shadow:0 0 16px rgba(245,200,66,.6);animation:kvGlow 2s ease-in-out infinite;}
+@keyframes kvGlow{0%,100%{box-shadow:0 0 8px rgba(245,200,66,.35);}50%{box-shadow:0 0 20px rgba(245,200,66,.8);}}
+.kv-img{width:100%;height:100%;object-fit:cover;display:block;}
+.kv-emoji{font-size:2.8em;line-height:1;}
+.kv-name{font-size:.68em;color:var(--text-dim);text-align:center;line-height:1.2;font-weight:700;font-family:'Cinzel',serif;letter-spacing:.5px;}
+.kv-tier-name{font-size:.58em;color:var(--text-faint);text-align:center;line-height:1.2;font-style:italic;}
+.kv-tier{font-size:.6em;color:var(--gold-bright);font-weight:700;letter-spacing:1px;}
+.kv-prod{font-size:.6em;color:var(--green);font-weight:700;}
+.kv-empty{font-size:.78em;color:var(--text-faint);font-style:italic;padding:16px;text-align:center;width:100%;display:flex;align-items:center;justify-content:center;}
+
+/* Dice stage — bottom half of centre */
+.dice-stage-wrap{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--canvas-table);cursor:pointer;display:flex;flex-direction:column;}
+.dice-viewport{flex:1;min-height:0;display:block;width:100%;position:relative;}
+.dice-stage-lbl{
+  flex-shrink:0;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(2px);
+  font-family:'Cinzel',serif;font-size:.68em;letter-spacing:2px;
+  color:var(--text-faint);text-align:center;padding:5px 0;
+  text-transform:uppercase;pointer-events:none;
+}
+.dice-stage-lbl.rolling{color:var(--gold-bright);animation:pulse .5s ease-in-out infinite alternate;}
+@keyframes pulse{from{opacity:.6}to{opacity:1}}
+.dice-stage-notice{
+  position:absolute;top:0;left:0;right:0;z-index:5;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.stage-notice-line{font-size:.65em;text-align:center;padding:3px 10px;backdrop-filter:blur(2px);}
+.stage-notice-line.loaded{background:rgba(138,64,0,.7);color:#ffc880;}
+.stage-notice-line.winter{background:rgba(30,80,160,.7);color:#a0d0ff;}
+/* Roll result strip */
+.roll-result{
+  flex-shrink:0;background:var(--bg-panel);border-top:1px solid var(--border);
+  padding:5px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  min-height:34px;
+}
+.rlbl{font-size:.65em;color:var(--text-faint);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;font-family:'Cinzel',serif;}
+.roll-faces{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+.rfc{background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:.78em;color:var(--text);}
+.rfc.neg{border-color:var(--red-bdr);background:var(--red-bg);color:var(--red);}
+.roll-gains{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto;}
+.gc{border-radius:4px;padding:2px 9px;font-size:.82em;font-weight:700;border:1px solid;}
+.gc.pos{background:var(--green-bg);border-color:var(--green-bdr);color:var(--green);}
+.gc.neg{background:var(--red-bg);border-color:var(--red-bdr);color:var(--red);}
+/* Consequence */
+.consequence-box{flex-shrink:0;background:var(--red-bg);border-top:2px solid var(--red-bdr);padding:5px 12px;text-align:center;}
+.ct{font-family:'Cinzel',serif;font-size:.72em;color:var(--red);letter-spacing:1px;margin-bottom:2px;}
+.cd{font-size:.78em;color:var(--red);}
+
+/* ═══════════════════════════ RIGHT PANEL ═══════════════════════════ */
+.right-panel{
+  width:var(--right-w);min-width:var(--right-w);flex-shrink:0;
+  background:var(--bg-panel);border-left:2px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.rp-header{
+  font-family:'Cinzel',serif;font-size:.6em;letter-spacing:2px;
+  color:var(--gold-bright);text-transform:uppercase;
+  padding:7px 12px 5px;border-bottom:1px solid var(--border);
+  background:var(--bg-deep);flex-shrink:0;
+}
+/* Scrollable dice area */
+.dice-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 10px;}
+.die-block{margin-bottom:10px;}
+.die-block-lbl{
+  font-size:.68em;color:var(--gold-bright);font-family:'Cinzel',serif;
+  letter-spacing:1px;padding-bottom:4px;margin-bottom:4px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;
+}
+.die-rolled-badge{
+  font-size:.85em;background:var(--gold-bright);color:#1a0a00;
+  border-radius:3px;padding:1px 5px;font-weight:700;
+}
+/* 3-column face grid */
+.die-faces-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.die-cube{
+  background:var(--die-bg);border:1.5px solid var(--die-border);
+  border-radius:7px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:5px 3px;
+  min-height:48px;cursor:default;
+  transition:border-color .2s,box-shadow .2s,transform .15s;
+}
+.die-cube .sym{font-size:1.1em;line-height:1.2;}
+.die-cube .lbl{font-size:.56em;color:var(--text-faint);margin-top:2px;text-align:center;line-height:1.2;word-break:break-word;}
+.die-cube.is-neg{border-color:var(--red-bdr);background:var(--red-bg);}
+.die-cube.is-neg .lbl{color:var(--red);}
+.die-cube.is-perm{border-color:var(--perm-bdr)!important;background:var(--perm-bg)!important;animation:permGlow 2s ease-in-out infinite;}
+.die-cube.is-perm .lbl{color:var(--perm-red);}
+@keyframes permGlow{0%,100%{box-shadow:0 0 4px 1px rgba(200,0,0,.2);}50%{box-shadow:0 0 10px 4px rgba(200,0,0,.45);}}
+.die-cube.is-rolled{
+  border-color:var(--gold-bright)!important;
+  box-shadow:0 0 0 2px var(--gold-bright),0 0 14px 4px rgba(245,200,66,.6)!important;
+  transform:scale(1.1);z-index:1;position:relative;
+  animation:rolledPop .3s ease-out,rolledGlow 1.4s ease-in-out infinite;
+}
+.die-cube.is-rolled .lbl{color:var(--gold-bright)!important;font-weight:700;}
+@keyframes rolledPop{0%{transform:scale(1.2);}100%{transform:scale(1.1);}}
+@keyframes rolledGlow{0%,100%{box-shadow:0 0 0 2px var(--gold-bright),0 0 10px 3px rgba(245,200,66,.5);}50%{box-shadow:0 0 0 2px var(--gold-bright),0 0 20px 7px rgba(245,200,66,.8);}}
+.die-cube.is-rolled.is-neg,.die-cube.is-rolled.is-perm{
+  border-color:var(--red)!important;
+  box-shadow:0 0 0 2px var(--red),0 0 12px 4px rgba(200,0,0,.55)!important;
+  animation:rolledPop .3s ease-out,rolledGlowRed 1.4s ease-in-out infinite;
+}
+@keyframes rolledGlowRed{0%,100%{box-shadow:0 0 0 2px var(--red),0 0 10px 3px rgba(200,0,0,.4);}50%{box-shadow:0 0 0 2px var(--red),0 0 18px 6px rgba(200,0,0,.7);}}
+.die-cube.is-winter{border-color:#5080b0!important;background:linear-gradient(135deg,#1a3060,#0e1e40)!important;}
+.die-cube.is-winter .lbl{color:#80b0e0!important;}
+.die-cube.is-infected{border-color:#22c55e!important;background:linear-gradient(135deg,#082010,#0e3018)!important;animation:infectPulse 1.5s ease-in-out infinite;}
+.die-cube.is-infected .lbl{color:#40d060!important;}
+@keyframes infectPulse{0%,100%{box-shadow:0 0 4px 1px rgba(34,197,94,.3);}50%{box-shadow:0 0 10px 4px rgba(34,197,94,.6);}}
+.die-cube.is-legendary{animation:legendaryGlow 2s ease-in-out infinite;}
+.die-cube.is-loaded{outline:1.5px dashed rgba(255,180,50,.5);outline-offset:2px;}
+@keyframes legendaryGlow{0%,100%{box-shadow:0 0 6px 2px var(--leg-glow,#f5c842);border-color:var(--leg-glow,#f5c842);}50%{box-shadow:0 0 16px 6px var(--leg-glow,#f5c842);border-color:var(--leg-glow,#f5c842);}}
+
+/* Warnings in right panel */
+.warn-strip{padding:5px 10px;flex-shrink:0;}
+.neg-warning{background:var(--red-bg);border-left:3px solid var(--red);padding:5px 10px;margin-bottom:4px;font-size:.72em;color:var(--red);}
+.perm-warning{background:var(--perm-bg);border-left:3px solid var(--perm-bdr);padding:5px 10px;margin-bottom:4px;font-size:.72em;color:var(--perm-red);animation:permGlow 2.5s ease-in-out infinite;}
+.death-warning{background:var(--perm-bg);border-left:3px solid var(--perm-red);padding:6px 10px;margin-bottom:4px;font-size:.75em;color:var(--perm-red);font-weight:700;}
+
+/* Log at bottom of right panel */
+.game-log{
+  height:130px;min-height:130px;flex-shrink:0;
+  background:var(--bg-deep);border-top:1px solid var(--border);
+  padding:6px 10px;overflow-y:auto;
+}
+.log-entry{font-size:.7em;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text-faint);}
+.log-entry:first-child{color:var(--text-dim);font-size:.75em;font-weight:600;}
+.log-neg{color:var(--red)!important;}
+.log-prod{color:var(--green)!important;font-weight:600;}
+.log-good{color:var(--blue)!important;}
+.log-cg{color:var(--green)!important;font-weight:600;}
+.log-cb{color:var(--red)!important;font-weight:600;}
+.log-perm{color:var(--perm-red)!important;font-weight:700;}
+
+/* ═══════════════════════════ BOTTOM ACTION BAR ═══════════════════════════ */
+.action-bar{
+  height:var(--bar-h);min-height:var(--bar-h);flex-shrink:0;
+  background:var(--bg-panel);border-top:2px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+  overflow-x:auto;
+}
+.action-bar::-webkit-scrollbar{height:3px;}
+.bar-phase{
+  font-family:'Cinzel',serif;font-size:.65em;letter-spacing:2px;
+  color:var(--text-faint);text-transform:uppercase;white-space:nowrap;
+  padding-right:10px;border-right:1px solid var(--border);margin-right:2px;
+  flex-shrink:0;
+}
+.bar-hint{font-size:.78em;color:var(--text-faint);font-style:italic;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-prod{
+  font-size:.75em;color:var(--green);font-weight:700;
+  background:var(--green-bg);border:1px solid var(--green-bdr);
+  border-radius:5px;padding:4px 9px;white-space:nowrap;flex-shrink:0;
+}
+.bar-sep{width:1px;height:28px;background:var(--border);flex-shrink:0;}
+
+/* Buttons */
+.btn{
+  font-family:'Cinzel',serif;font-size:.78em;font-weight:700;letter-spacing:.5px;
+  padding:8px 16px;border-radius:7px;border:2px solid transparent;
+  cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.btn:disabled{opacity:.3;cursor:not-allowed;}
+.btn.done{opacity:.5;}
+.btn-roll{background:var(--gold-bright);border-color:var(--gold-bright);color:#1a0a00;font-size:.88em;padding:9px 22px;}
+.btn-roll:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-1px);}
+.btn-forge{background:var(--bg-mid);border-color:var(--border);color:var(--text);}
+.btn-forge:hover:not(:disabled){border-color:var(--gold-bright);color:var(--gold-bright);}
+.btn-deed{background:var(--green-bg);border-color:var(--green-bdr);color:var(--green);}
+.btn-deed:hover:not(:disabled){filter:brightness(1.1);}
+.btn-die{background:var(--purple-bg);border-color:var(--purple-bdr);color:var(--purple);}
+.btn-die:hover:not(:disabled){filter:brightness(1.1);}
+.btn-end{background:var(--red-bg);border-color:var(--red-bdr);color:var(--red);}
+.btn-end:hover:not(:disabled){filter:brightness(1.1);}
+
+/* ═══════════════════════════ MAIN MENU ═══════════════════════════ */
+.diff-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:400;
+  display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px;
+}
+.diff-box{
+  background:var(--bg-panel);border:2px solid var(--border);border-radius:14px;
+  padding:28px 28px;max-width:680px;width:100%;box-shadow:var(--shadow-lg);
+  text-align:center;margin:auto;
+}
+.diff-title{font-family:'Cinzel',serif;font-size:1.8em;font-weight:900;color:var(--gold-bright);letter-spacing:3px;margin-bottom:4px;}
+.diff-sub{font-size:.88em;color:var(--text-dim);font-style:italic;margin-bottom:18px;}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.diff-card{
+  background:var(--bg-mid);border:2px solid var(--border-light);border-radius:10px;
+  padding:14px 12px;cursor:pointer;transition:all .2s;text-align:left;
+}
+.diff-card:hover{border-color:var(--gold-bright);background:var(--bg-deep);transform:translateY(-2px);}
+.d-name{font-family:'Cinzel',serif;font-size:.95em;color:var(--text);margin-bottom:4px;}
+.d-target{font-size:1.4em;font-weight:700;color:var(--purple);margin-bottom:4px;}
+.d-desc{font-size:.82em;color:var(--text-dim);font-style:italic;}
+.how-to{background:var(--bg-mid);border:1px solid var(--border-light);border-radius:8px;padding:14px;text-align:left;}
+.how-to h3{font-family:'Cinzel',serif;font-size:.9em;color:var(--gold-bright);margin-bottom:8px;}
+.how-to p{font-size:.82em;color:var(--text-dim);margin-bottom:5px;line-height:1.55;}
+
+/* ═══════════════════════════ SEASON CARD MODAL ═══════════════════════════ */
+.sc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px);}
+.sc-box{max-width:400px;width:95%;border-radius:14px;padding:26px 24px;text-align:center;border:3px solid;animation:cardReveal .4s ease;}
+@keyframes cardReveal{0%{transform:scale(.7) rotateY(90deg);opacity:0;}65%{transform:scale(1.03) rotateY(-2deg);}100%{transform:scale(1) rotateY(0);opacity:1;}}
+.sc-box.good{background:var(--green-bg);border-color:var(--green-bdr);box-shadow:0 0 30px rgba(60,200,40,.2);}
+.sc-box.bad{background:var(--red-bg);border-color:var(--red-bdr);box-shadow:0 0 30px rgba(200,40,40,.2);}
+.sc-s-lbl{font-size:.68em;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;font-family:'Cinzel',serif;}
+.sc-box.good .sc-s-lbl{color:var(--green);}
+.sc-box.bad .sc-s-lbl{color:var(--red);}
+.sc-icon{font-size:3em;margin-bottom:10px;}
+.sc-name{font-family:'Cinzel',serif;font-size:1.3em;font-weight:700;margin-bottom:7px;letter-spacing:2px;}
+.sc-box.good .sc-name{color:var(--green);}
+.sc-box.bad .sc-name{color:var(--red);}
+.sc-desc{font-size:.9em;color:var(--text-dim);margin-bottom:10px;line-height:1.55;}
+.sc-effect{font-size:.9em;font-weight:700;margin-bottom:18px;padding:9px 13px;border-radius:7px;line-height:1.6;}
+.sc-box.good .sc-effect{background:rgba(0,80,0,.1);color:var(--green);border:1px solid var(--green-bdr);}
+.sc-box.bad .sc-effect{background:rgba(180,0,0,.08);color:var(--red);border:1px solid var(--red-bdr);}
+.btn-dismiss{font-family:'Cinzel',serif;font-size:.9em;font-weight:700;border-radius:7px;padding:10px 22px;cursor:pointer;letter-spacing:1px;transition:all .2s;border:2px solid;width:100%;}
+.sc-box.good .btn-dismiss{background:var(--green);border-color:var(--green);color:#fff;}
+.sc-box.bad .btn-dismiss{background:var(--red);border-color:var(--red);color:#fff;}
+
+/* ═══════════════════════════ MODALS ═══════════════════════════ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);padding:20px;}
+.modal{
+  background:var(--bg-panel);border:2px solid var(--border);border-radius:12px;
+  padding:18px 22px;max-width:900px;width:97%;
+  max-height:calc(100vh - 40px);
+  display:flex;flex-direction:column;
+  box-shadow:var(--shadow-lg);overflow:hidden;
+}
+.modal-scroll{flex:1;overflow-y:auto;min-height:0;}
+.modal-footer{flex-shrink:0;padding-top:12px;border-top:1px solid var(--border);margin-top:8px;}
+.modal-title{font-family:'Cinzel',serif;font-size:1.15em;color:var(--gold-bright);text-align:center;letter-spacing:3px;margin-bottom:4px;flex-shrink:0;}
+.modal-sub{font-size:.82em;color:var(--text-dim);text-align:center;margin-bottom:12px;font-style:italic;flex-shrink:0;}
+.modal-wide{max-width:980px;}
+.tier-label{font-size:.7em;letter-spacing:2px;text-transform:uppercase;font-family:'Cinzel',serif;margin:14px 0 7px;font-weight:700;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:4px;}
+.forge-card{
+  background:var(--bg-mid);border:2px solid var(--border);border-radius:9px;
+  padding:10px 7px;text-align:center;cursor:not-allowed;opacity:.6;
+  transition:all .2s;
+}
+.forge-card.can{cursor:pointer;opacity:1;}
+.forge-card.can:hover{border-color:var(--gold-bright);background:var(--bg-deep);transform:translateY(-2px);}
+.forge-card.special-die.can{border-color:var(--blue);background:rgba(0,60,120,.1);}
+.c-sym{font-size:1.7em;margin-bottom:5px;}
+.c-name{font-size:.7em;font-weight:700;color:var(--text);margin-bottom:5px;line-height:1.3;}
+.cost-row{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-bottom:4px;}
+.cc{font-size:.7em;padding:1px 5px;border-radius:3px;border:1px solid var(--border);}
+.cc.ok{color:var(--green);border-color:var(--green-bdr);}
+.cc.no{color:var(--red);border-color:var(--red-bdr);}
+.afford{font-size:.65em;font-weight:700;}
+
+/* Building modal — compact forge-style */
+.bld-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;margin-bottom:4px;}
+.bld-track-arrow{display:flex;align-items:center;font-size:1em;color:var(--border-light);padding:0 1px;align-self:center;}
+.bld-card{
+  background:var(--bg-mid);border:2px solid var(--border);border-radius:9px;
+  padding:9px 9px 8px;min-width:130px;max-width:170px;flex:1;
+  transition:all .2s;cursor:default;
+}
+.bld-card.built{border-color:var(--green-bdr);}
+.bld-card.locked{opacity:.5;}
+.bld-card.buyable{border-color:var(--gold-bright);cursor:pointer;background:rgba(180,130,0,.06);}
+.bld-card.buyable:hover{background:rgba(180,130,0,.14);transform:translateY(-2px);}
+.bld-card-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.bld-icon{font-size:1.3em;flex-shrink:0;}
+.bld-name{font-family:'Cinzel',serif;font-size:.72em;font-weight:700;color:var(--text);line-height:1.2;}
+.bld-pips{display:flex;gap:2px;margin-top:2px;}
+.tier-pip{color:var(--border-light);font-size:.8em;}
+.tier-pip.done{color:var(--green);}
+.tier-pip.next{color:var(--gold-bright);}
+.bld-locked{font-size:.62em;color:var(--red);background:var(--red-bg);border-radius:3px;padding:2px 5px;margin-bottom:4px;}
+.bld-maxed{font-size:.62em;color:var(--green);background:var(--green-bg);border-radius:3px;padding:2px 5px;margin-bottom:4px;font-weight:700;}
+.bld-current{font-size:.62em;color:var(--green);margin-bottom:4px;font-weight:600;line-height:1.3;}
+.bld-next{border-top:1px solid var(--border);padding-top:5px;margin-top:2px;}
+.bld-up-header{display:flex;align-items:center;gap:3px;margin-bottom:3px;flex-wrap:wrap;}
+.bld-tier-num{font-size:.58em;background:var(--gold-bright);color:#1a0a00;border-radius:2px;padding:1px 4px;font-weight:700;}
+.bld-tier-name{font-size:.68em;font-weight:700;color:var(--text);}
+.bld-special{font-size:.6em;color:var(--purple);}
+.bld-tier-prod{font-size:.65em;color:var(--green);font-weight:700;margin-bottom:2px;}
+.bld-tier-glory{font-size:.65em;color:var(--purple);font-weight:700;margin-bottom:3px;display:inline;}
+.bld-desc-line{font-size:.6em;color:var(--text-faint);line-height:1.35;margin-bottom:4px;font-style:italic;}
+.bld-tier-effect{font-size:.6em;color:var(--text-dim);line-height:1.35;margin-bottom:3px;font-style:italic;}
+.bld-cta{font-size:.62em;color:var(--gold-bright);font-weight:700;margin-top:4px;}
+.bld-cant{font-size:.62em;color:var(--text-faint);margin-top:4px;}
+
+/* Face picker in forge */
+.die-group{margin-bottom:12px;}
+.die-group-lbl{font-family:'Cinzel',serif;font-size:.72em;color:var(--gold-bright);margin-bottom:6px;letter-spacing:1px;}
+.die-faces{display:flex;gap:6px;flex-wrap:wrap;}
+.face-btn{
+  width:60px;height:60px;background:var(--die-bg);border:2px solid var(--die-border);
+  border-radius:8px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:1.4em;
+  transition:all .2s;gap:2px;
+}
+.face-btn:hover:not(.is-perm){border-color:var(--gold-bright);transform:scale(1.1);}
+.face-btn.is-neg{border-color:var(--red-bdr);background:var(--red-bg);}
+.face-btn.is-perm{border-color:var(--perm-bdr);background:var(--perm-bg);cursor:not-allowed;animation:permGlow 2s ease-in-out infinite;}
+.face-btn span.tiny{font-size:.45em;color:var(--text-dim);text-align:center;line-height:1.2;max-width:52px;}
+
+/* Remove perm modal */
+.perm-face-btn{width:72px;height:72px;background:var(--perm-bg);border:2px solid var(--perm-bdr);border-radius:9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.4em;transition:all .2s;gap:3px;animation:permGlow 2s ease-in-out infinite;}
+.perm-face-btn:hover{border-color:var(--perm-red);transform:scale(1.1);}
+.perm-face-btn span.tiny{font-size:.5em;color:var(--perm-red);}
+
+/* Visitor modal */
+.btn-action{
+  font-family:'Cinzel',serif;font-size:.82em;font-weight:700;
+  padding:9px 18px;border-radius:7px;border:2px solid var(--gold-bright);
+  cursor:pointer;transition:all .2s;background:var(--gold-bright);color:#1a0a00;
+}
+.btn-action:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Settings */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:flex-start;justify-content:flex-end;padding:56px 16px 16px;}
+.settings-panel{background:var(--bg-panel);border:2px solid var(--border);border-radius:11px;padding:18px 20px;width:300px;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+.sp-title{font-family:'Cinzel',serif;font-size:1em;color:var(--gold-bright);margin-bottom:12px;letter-spacing:2px;border-bottom:1px solid var(--border);padding-bottom:7px;}
+.sp-section{margin-bottom:14px;}
+.sp-lbl{font-size:.75em;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px;font-weight:600;}
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.theme-btn{background:var(--bg-mid);border:2px solid var(--border);border-radius:7px;padding:8px 6px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Cinzel',serif;font-size:.75em;color:var(--text);}
+.theme-btn:hover{border-color:var(--gold-bright);}
+.theme-btn.active{border-color:var(--gold-bright);background:var(--bg-deep);color:var(--gold-bright);font-weight:bold;}
+.sp-slider-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sp-slider-row label{font-size:.82em;color:var(--text);min-width:80px;}
+.sp-slider-row input[type=range]{flex:1;accent-color:var(--gold-bright);}
+.sp-slider-row span{font-size:.78em;color:var(--text-dim);min-width:32px;}
+.sp-close{width:100%;font-family:'Cinzel',serif;font-size:.8em;background:var(--bg-deep);border:2px solid var(--border);color:var(--text);border-radius:6px;padding:8px;cursor:pointer;letter-spacing:1px;transition:all .2s;margin-top:5px;}
+.sp-close:hover{border-color:var(--gold-bright);}
+
+/* Game over */
+.game-over{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300;}
+.game-over-box{text-align:center;background:var(--bg-panel);border-radius:13px;padding:36px 44px;max-width:480px;width:95%;box-shadow:var(--shadow-lg);}
+.game-over-box.win{border:3px solid var(--gold-bright);}
+.game-over-box.lose{border:3px solid var(--perm-red);}
+.go-crown{font-size:3.5em;margin-bottom:8px;}
+.go-result{font-family:'Cinzel',serif;font-size:1.6em;font-weight:900;letter-spacing:4px;margin-bottom:5px;}
+.win .go-result{color:var(--gold-bright);}
+.lose .go-result{color:var(--red);}
+.go-sub{font-size:.88em;color:var(--text-dim);margin-bottom:12px;font-style:italic;}
+.go-score{font-size:2.8em;font-weight:700;color:var(--purple);margin-bottom:3px;line-height:1;}
+.go-rank{font-family:'Cinzel',serif;font-size:1.25em;color:var(--gold-bright);margin-bottom:4px;}
+.go-detail{font-size:.9em;margin-bottom:18px;color:var(--text-dim);}
+.btn-restart{font-family:'Cinzel',serif;font-size:.9em;font-weight:700;background:var(--gold-bright);border:2px solid var(--gold-bright);color:#1a0a00;border-radius:7px;padding:11px 26px;cursor:pointer;letter-spacing:2px;transition:all .2s;}
+.btn-restart:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-close{font-family:'Cinzel',serif;font-size:.75em;background:var(--bg-mid);border:2px solid var(--border);color:var(--text-dim);border-radius:5px;padding:6px 16px;cursor:pointer;transition:all .2s;}
+.btn-close:hover{border-color:var(--gold-bright);color:var(--gold-bright);}
+.btn-back{font-family:'Cinzel',serif;font-size:.75em;background:var(--bg-mid);border:2px solid var(--border);color:var(--text);border-radius:5px;padding:6px 13px;cursor:pointer;margin-right:7px;}
+
+/* Resource value flash on change */
+@keyframes resFlash{0%{color:var(--gold-bright);transform:scale(1.25);}100%{color:inherit;transform:scale(1);}}
+.res-val.flash{animation:resFlash .4s ease-out;}
+/* Roll button idle pulse */
+@keyframes rollPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,200,66,.0);}50%{box-shadow:0 0 0 6px rgba(245,200,66,.18);}}
+.btn-roll:not([disabled]){animation:rollPulse 2.5s ease-in-out infinite;}
+/* Smooth modal entrance */
+@keyframes modalIn{from{opacity:0;transform:translateY(-12px) scale(.97);}to{opacity:1;transform:none;}}
+.modal{animation:modalIn .18s ease-out;}
+.sc-box{animation:cardReveal .38s cubic-bezier(.22,.68,0,1.2);}
+/* Log entry slide-in */
+@keyframes logSlide{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:none;}}
+.log-entry:first-child{animation:logSlide .25s ease-out;}
+/* Dice rolled face glow pulse */
+@keyframes rolledPulse{0%,100%{box-shadow:0 0 6px var(--gold-glow);}50%{box-shadow:0 0 14px var(--gold-glow);}}
+.die-cube.is-rolled{animation:rolledPulse 1.4s ease-in-out infinite;}
+.legend{display:none;}
+.prod-panel{display:none;}
+kbd{background:var(--bg-mid);border:1px solid var(--border-light);border-radius:3px;padding:1px 5px;font-size:.8em;font-family:monospace;color:var(--text-dim);letter-spacing:0;}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+// ═══════════════════════════
+//  SETTINGS
+// ═══════════════════════════
+let S={theme:'tavern',fontSize:15,textColor:'',showSettings:false};
+function applySettings(){
+  // 'tavern' = default :root (dark), others get a class
+  document.body.className=S.theme==='tavern'?'':'theme-'+S.theme;
+  document.documentElement.style.setProperty('--font-size',S.fontSize+'px');
+  // text colour override — empty string means use theme default
+  if(S.textColor){
+    document.documentElement.style.setProperty('--text',S.textColor);
+    document.documentElement.style.setProperty('--text-dim',S.textColor);
+  } else {
+    document.documentElement.style.removeProperty('--text');
+    document.documentElement.style.removeProperty('--text-dim');
+  }
+}
+applySettings();
+
+// ═══════════════════════════
+//  FACE DATA
+// ═══════════════════════════
+const F={
+  GRAIN_1:{id:'GRAIN_1',grain:1,gold:0,hammer:0,glory:0,neg:false,label:'1 Grain',sym:'🌾'},
+  GRAIN_2:{id:'GRAIN_2',grain:2,gold:0,hammer:0,glory:0,neg:false,label:'2 Grain',sym:'🌾🌾'},
+  GRAIN_3:{id:'GRAIN_3',grain:3,gold:0,hammer:0,glory:0,neg:false,label:'3 Grain',sym:'🌾×3'},
+  GRAIN_4:{id:'GRAIN_4',grain:4,gold:0,hammer:0,glory:0,neg:false,label:'4 Grain',sym:'🌾×4'},
+  GOLD_1: {id:'GOLD_1', grain:0,gold:1,hammer:0,glory:0,neg:false,label:'1 Gold',sym:'💰'},
+  GOLD_2: {id:'GOLD_2', grain:0,gold:2,hammer:0,glory:0,neg:false,label:'2 Gold',sym:'💰💰'},
+  GOLD_3: {id:'GOLD_3', grain:0,gold:3,hammer:0,glory:0,neg:false,label:'3 Gold',sym:'💰×3'},
+  GOLD_4: {id:'GOLD_4', grain:0,gold:4,hammer:0,glory:0,neg:false,label:'4 Gold',sym:'💰×4'},
+  HAMMER_1:{id:'HAMMER_1',grain:0,gold:0,hammer:1,glory:0,neg:false,label:'1 Hammer',sym:'⚒️'},
+  HAMMER_2:{id:'HAMMER_2',grain:0,gold:0,hammer:2,glory:0,neg:false,label:'2 Hammers',sym:'⚒️⚒️'},
+  HAMMER_3:{id:'HAMMER_3',grain:0,gold:0,hammer:3,glory:0,neg:false,label:'3 Hammers',sym:'⚒️×3'},
+  GLORY_1: {id:'GLORY_1', grain:0,gold:0,hammer:0,glory:1,neg:false,label:'1 Prestige',sym:'⚜️'},
+  GLORY_2: {id:'GLORY_2', grain:0,gold:0,hammer:0,glory:2,neg:false,label:'2 Prestige',sym:'⚜️⚜️'},
+  GLORY_3: {id:'GLORY_3', grain:0,gold:0,hammer:0,glory:3,neg:false,label:'3 Prestige',sym:'⚜️×3'},
+  MULTI_1: {id:'MULTI_1', grain:1,gold:1,hammer:0,glory:0,neg:false,label:'1🌾+1💰',sym:'🌾💰'},
+  MULTI_2: {id:'MULTI_2', grain:2,gold:2,hammer:0,glory:0,neg:false,label:'2🌾+2💰',sym:'2🌾2💰'},
+  MIXED:   {id:'MIXED',   grain:1,gold:1,hammer:0,glory:1,neg:false,label:'🌾+💰+⚜️',sym:'🌾💰⚜️'},
+  DROUGHT: {id:'DROUGHT',grain:-2,gold:0,hammer:0,glory:0,neg:true,label:'Drought −2🌾',sym:'☀️',negEvent:'The fields wither. Lose 2 Grain.'},
+  BANDIT:  {id:'BANDIT', grain:0,gold:-2,hammer:0,glory:0,neg:true,label:'Bandits −2💰',sym:'🗡️',negEvent:'Cutpurses raid the treasury. Lose 2 Gold.'},
+  PLAGUE:  {id:'PLAGUE', grain:-1,gold:-1,hammer:0,glory:0,neg:true,label:'Plague −1🌾−1💰',sym:'💀',negEvent:'Pestilence strikes. Lose 1 Grain & 1 Gold.'},
+  RIOT:    {id:'RIOT',   grain:-1,gold:-1,hammer:-1,glory:0,neg:true,label:'Peasant Riot!',sym:'🔥',negEvent:'The peasants revolt! Lose 1 of each.'},
+  CURSE:   {id:'CURSE',  grain:0,gold:0,hammer:0,glory:-2,neg:true,label:"Witch's Curse",sym:'🧿',negEvent:"A hex falls on the keep. Lose 2 Prestige."},
+  FLOOD:   {id:'FLOOD',  grain:-3,gold:0,hammer:0,glory:0,neg:true,label:'Great Flood −3🌾',sym:'🌊',negEvent:'Rivers burst. Lose 3 Grain.'},
+  INFECTION:{id:'INFECTION',grain:-1,gold:-1,hammer:0,glory:-1,neg:true,label:'Infected! Spreads!',sym:'🦠',negEvent:'Infection spreads — another face corrupted! Lose 1 of each.'},
+  // ── LEGENDARY FACES (offered only by visitor events) ──
+  LEG_DRAGON_HOARD:{id:'LEG_DRAGON_HOARD',grain:0,gold:5,hammer:0,glory:2,neg:false,label:'Dragon\'s Hoard',sym:'🐉',legendary:true,legendaryGlow:'#f5a623'},
+  LEG_ARCANE_SURGE:{id:'LEG_ARCANE_SURGE',grain:2,gold:2,hammer:2,glory:2,neg:false,label:'Arcane Surge',sym:'✨',legendary:true,legendaryGlow:'#a855f7'},
+  LEG_GIANT_BOUNTY:{id:'LEG_GIANT_BOUNTY',grain:5,gold:0,hammer:3,glory:1,neg:false,label:'Giant\'s Bounty',sym:'🏔️',legendary:true,legendaryGlow:'#22c55e'},
+  LEG_GOBLIN_TRICK:{id:'LEG_GOBLIN_TRICK',grain:3,gold:3,hammer:0,glory:3,neg:false,label:'Goblin\'s Trick',sym:'👺',legendary:true,legendaryGlow:'#ef4444'},
+  LEG_PHOENIX:     {id:'LEG_PHOENIX',     grain:0,gold:0,hammer:0,glory:6,neg:false,label:'Phoenix Risen',sym:'🔥',legendary:true,legendaryGlow:'#f97316'},
+  LEG_CELESTIAL:   {id:'LEG_CELESTIAL',   grain:1,gold:1,hammer:1,glory:4,neg:false,label:'Celestial Blessing',sym:'⭐',legendary:true,legendaryGlow:'#eab308'},
+  LEG_NETHER:      {id:'LEG_NETHER',      grain:0,gold:6,hammer:0,glory:0,neg:false,label:'Nether Gold',sym:'💎',legendary:true,legendaryGlow:'#06b6d4'},
+  LEG_WARLORDS:    {id:'LEG_WARLORDS',    grain:0,gold:0,hammer:5,glory:2,neg:false,label:'Warlord\'s Arsenal',sym:'⚔️',legendary:true,legendaryGlow:'#64748b'},
+  // ── WINTER DIE FACES ──
+  FAMINE:  {id:'FAMINE', grain:-3,gold:-1,hammer:0,glory:-1,neg:true,label:'Famine',sym:'🥀',negEvent:'Starvation sweeps the realm. Lose 3 Grain, 1 Gold, 1 Prestige.'},
+  FROST:   {id:'FROST',  grain:-2,gold:0,hammer:-1,glory:0,neg:true,label:'Bitter Frost',sym:'🌨️',negEvent:'Frost destroys crops and tools. Lose 2 Grain & 1 Hammer.'},
+  BLIZZARD:{id:'BLIZZARD',grain:-2,gold:-2,hammer:0,glory:0,neg:true,label:'Blizzard',sym:'❄️',negEvent:'A great blizzard strikes. Lose 2 Grain & 2 Gold.'},
+  WOLVES:  {id:'WOLVES', grain:-1,gold:-1,hammer:0,glory:-1,neg:true,label:'Wolf Pack',sym:'🐺',negEvent:'Wolves raid the flocks. Lose 1 of each resource & 1 Prestige.'},
+  SCARCITY:{id:'SCARCITY',grain:-1,gold:-1,hammer:0,glory:0,neg:true,label:'Scarcity',sym:'🪨',negEvent:'Winter scarcity drains the stores. Lose 1 Grain & 1 Gold.'},
+  NOTHING: {id:'NOTHING',grain:0,gold:0,hammer:0,glory:0,neg:false,label:'Quiet Winter',sym:'🕯️',negEvent:null},
+};
+const CURSE_IDS=['DROUGHT','BANDIT','PLAGUE','RIOT','CURSE','FLOOD'];
+const DIE_A=['GRAIN_1','GRAIN_1','GOLD_1','HAMMER_1','GLORY_1','DROUGHT'];
+const DIE_B=['GRAIN_1','GOLD_1','GOLD_1','HAMMER_1','GLORY_1','BANDIT'];
+const DIE_C=['GRAIN_1','GOLD_1','HAMMER_1','GLORY_1','PLAGUE','GRAIN_1'];
+const DIE_D=['GRAIN_1','GOLD_1','HAMMER_1','GLORY_1','GRAIN_1','GOLD_1'];
+// Winter die — mostly bad, one quiet face. Only present in Winter season.
+const DIE_WINTER=['FAMINE','BLIZZARD','FROST','WOLVES','SCARCITY','NOTHING'];
+
+// ═══════════════════════════════════════════════════════
+//  BUILDING SYSTEM — Tiered upgrade tracks
+//  Each BUILDING has tiers. G.buildings = {id: tier} (0=not built, 1=tier1, etc)
+// ═══════════════════════════════════════════════════════
+
+const BUILDINGS = [
+  // ══ FOOD TRACK ══
+  {
+    id:'farm', track:'food', icon:'🌾', name:'Farm',
+    desc:'Feed your kingdom with the fruits of the land.',
+    tiers:[
+      {name:'Peasant Farm',     cost:{grain:2},         glory:1, prod:{grain:1}, desc:'Peasants till the fields by hand.',                     icon:'🌾'},
+      {name:'Ox-Tilled Farm',   cost:{grain:3,gold:1},  glory:2, prod:{grain:2}, desc:'Oxen pull the plough, doubling the harvest.',           icon:'🐂'},
+      {name:'Irrigated Fields', cost:{grain:4,gold:2},  glory:3, prod:{grain:3}, desc:'A network of canals feeds every furrow.',               icon:'💧'},
+      {name:'Royal Granary',    cost:{grain:5,gold:3},  glory:4, prod:{grain:5}, desc:'Vast stone granaries store a kingdom\'s bounty.',       icon:'🌽'},
+    ],
+    unlocks:['windmill'],
+  },
+  {
+    id:'windmill', track:'food', icon:'⚙️', name:'Windmill',
+    requires:'farm',
+    requiresDesc:'Requires Farm Tier 1',
+    desc:'Mill grain into flour — the foundation of trade.',
+    tiers:[
+      {name:'Wind Mill',    cost:{grain:2,gold:1},  glory:2, prod:{gold:1}, desc:'Wind-driven millstones grind grain to flour, sold at market.',  icon:'⚙️'},
+      {name:'Water Mill',   cost:{grain:3,gold:2},  glory:3, prod:{gold:2}, desc:'A great water wheel doubles milling output.',                   icon:'🌊'},
+      {name:'Mill Complex', cost:{grain:4,gold:3},  glory:4, prod:{gold:3}, desc:'A complex of mills dominates the valley, exporting broadly.',   icon:'🏭'},
+    ],
+    unlocks:['bakery'],
+  },
+  {
+    id:'bakery', track:'food', icon:'🍞', name:'Bakery',
+    requires:'windmill',
+    requiresDesc:'Requires Windmill Tier 1',
+    desc:'Turn flour into bread — prestige through prosperity.',
+    tiers:[
+      {name:'Village Bakery', cost:{grain:2,gold:2},  glory:3, prod:{grain:1,glory:1}, desc:'A warm bakery draws folk from miles around, boosting morale.', icon:'🍞'},
+      {name:'Guild Bakery',   cost:{grain:3,gold:3},  glory:4, prod:{grain:2,glory:2}, desc:'A master guild produces fine bread fit for noble tables.',     icon:'👨‍🍳'},
+      {name:'Royal Kitchens', cost:{grain:4,gold:5},  glory:6, prod:{grain:2,gold:1,glory:3}, desc:'The finest kitchen in the realm — your feasts are legendary.', icon:'👑'},
+    ],
+    unlocks:[],
+  },
+
+  // ══ INDUSTRY TRACK ══
+  {
+    id:'workshop', track:'industry', icon:'🔧', name:'Workshop',
+    desc:'Forge the tools that shape your kingdom.',
+    tiers:[
+      {name:'Carpenter\'s Shop', cost:{grain:2,gold:1},  glory:2, prod:{hammer:1}, desc:'Skilled carpenters craft basic tools for the realm.',               icon:'🔧'},
+      {name:'Iron Workshop',     cost:{grain:2,gold:2},  glory:3, prod:{hammer:2}, desc:'Iron tools forged here arm builders across the land.',              icon:'⚒️'},
+      {name:'Master Smithy',     cost:{grain:3,gold:3},  glory:4, prod:{hammer:3}, desc:'Master smiths produce high-grade tools and equipment.',             icon:'🔨'},
+      {name:'Dwarven Foundry',   cost:{hammer:3,gold:4}, glory:6, prod:{hammer:5}, desc:'Ancient dwarven craft — the finest smithing in the known world.', icon:'🏭', special:'unlockRare'},
+    ],
+    unlocks:['armory'],
+  },
+  {
+    id:'armory', track:'industry', icon:'🛡️', name:'Armory',
+    requires:'workshop',
+    requiresDesc:'Requires Workshop Tier 1',
+    desc:'Arm the realm and attract wealthy patrons.',
+    tiers:[
+      {name:'Militia Armory',   cost:{hammer:2,gold:2},  glory:3, prod:{gold:1,hammer:1}, desc:'Local militia are armed, encouraging trade and security.',     icon:'🛡️'},
+      {name:'Royal Armory',     cost:{hammer:3,gold:3},  glory:4, prod:{gold:2,hammer:2}, desc:'A full armory supplies a standing army — gold flows in.',     icon:'⚔️'},
+      {name:'Arsenal Fortress', cost:{hammer:4,gold:5},  glory:7, prod:{gold:3,hammer:2}, desc:'An impenetrable fortress armory, the envy of all kingdoms.', icon:'🏯'},
+    ],
+    unlocks:['colosseum'],
+  },
+  {
+    id:'colosseum', track:'industry', icon:'🏟️', name:'Colosseum',
+    requires:'armory',
+    requiresDesc:'Requires Armory Tier 1',
+    desc:'Grand spectacles draw gold and glory from across the realm.',
+    tiers:[
+      {name:'Arena',         cost:{gold:3,grain:2},  glory:5, prod:{gold:2,glory:1}, desc:'A humble arena draws local crowds and merchants alike.',         icon:'🏟️'},
+      {name:'Grand Colosseum',cost:{gold:5,grain:3}, glory:8, prod:{gold:3,glory:2}, desc:'Thousands flock to see gladiatorial spectacles.',               icon:'🏆'},
+      {name:'Imperial Games', cost:{gold:7,grain:4}, glory:12,prod:{gold:4,glory:3}, desc:'Your Imperial Games are famous across the entire known world.', icon:'👑'},
+    ],
+    unlocks:[],
+  },
+
+  // ══ PRESTIGE TRACK ══
+  {
+    id:'chapel', track:'prestige', icon:'⛪', name:'Chapel',
+    desc:'Faith and learning elevate the spirit of the kingdom.',
+    tiers:[
+      {name:'Village Chapel',  cost:{grain:2,gold:1},  glory:2, prod:{glory:1}, desc:'A modest chapel earns the gratitude and loyalty of your people.',   icon:'⛪'},
+      {name:'Cathedral',       cost:{grain:3,gold:3},  glory:5, prod:{glory:2}, desc:'A great cathedral draws pilgrims and elevates your reputation.',    icon:'🕌'},
+      {name:'Grand Cathedral', cost:{grain:4,gold:5},  glory:8, prod:{glory:3}, desc:'One of the great wonders of the world — glory without end.',        icon:'✨'},
+    ],
+    unlocks:['library'],
+  },
+  {
+    id:'library', track:'prestige', icon:'📚', name:'Library',
+    requires:'chapel',
+    requiresDesc:'Requires Chapel Tier 1',
+    desc:'Knowledge is power — scholars and philosophers flock to your court.',
+    tiers:[
+      {name:'Scholar\'s Hall',  cost:{grain:2,gold:3},  glory:3, prod:{glory:1,gold:1}, desc:'Scholars gather, attracting wealthy patrons and prestige.',    icon:'📚'},
+      {name:'Grand Library',    cost:{grain:3,gold:4},  glory:5, prod:{glory:2,gold:1}, desc:'A repository of all knowledge — the greatest minds convene.',  icon:'🏛️'},
+      {name:'Royal Academy',    cost:{grain:4,gold:6},  glory:7, prod:{glory:3,gold:2}, desc:'Your academy produces the realm\'s greatest thinkers.',        icon:'🎓'},
+    ],
+    unlocks:['alchemist'],
+  },
+  {
+    id:'alchemist', track:'prestige', icon:'⚗️', name:'Alchemist Tower',
+    requires:'library',
+    requiresDesc:'Requires Library Tier 1',
+    desc:'Generates Prestige and Hammers every season — making the Forge cheaper to use. The top tier unlocks Rare Forge options.',
+    tiers:[
+      {name:'Alchemist Workshop',cost:{gold:3,grain:2},  glory:3, prod:{glory:1,hammer:1}, desc:'Earns +1 Prestige and +1 Hammer every season. The free Hammer offsets Forge costs.',                                                              icon:'⚗️'},
+      {name:'Arcane Laboratory',  cost:{gold:4,grain:3},  glory:5, prod:{glory:2,hammer:2}, desc:'Earns +2 Prestige and +2 Hammers every season — enough to forge once per season for free effectively.',                                           icon:'🔬'},
+      {name:'Tower of Sorcery',   cost:{gold:6,grain:4},  glory:8, prod:{glory:3,gold:2,hammer:1}, desc:'Earns +3 Prestige, +2 Gold, +1 Hammer every season AND unlocks the Rare Forge tier — the most powerful die faces in the game.', icon:'🧙', special:'unlockRare'},
+    ],
+    unlocks:[],
+  },
+
+  // ══ SPECIAL / GRAND BUILDINGS ══
+  {
+    id:'castle', track:'grand', icon:'🏰', name:'Castle',
+    desc:'The seat of your power. Generates Prestige each season with no ongoing cost.',
+    tiers:[
+      {name:'Keep',           cost:{grain:3,gold:2},         glory:4, prod:{glory:1}, desc:'A stone keep that earns +1 Prestige every season automatically.',                                                        icon:'🏰'},
+      {name:'Castle',         cost:{grain:4,gold:4,hammer:2},glory:7, prod:{glory:2}, desc:'An imposing castle. Earns +2 Prestige every season.',                                                                    icon:'🏯'},
+      {name:'Royal Palace',   cost:{grain:5,gold:6,hammer:3},glory:12,prod:{glory:3,gold:1}, desc:'A magnificent palace that earns +3 Prestige and +1 Gold every season — the ultimate status symbol.',             icon:'👑'},
+    ],
+    unlocks:[],
+  },
+  {
+    id:'purify', track:'grand', icon:'✨', name:'Purification Shrine',
+    desc:'Removes permanent curses — the only way to cleanse ⛔ faces that the Forge cannot touch. Build this before permanent curses accumulate to 8 and end your reign.',
+    tiers:[
+      {name:'Purification Shrine', cost:{grain:3,gold:3},  glory:3, prod:{}, special:'removePermanent',    desc:'On purchase: immediately removes 1 permanent ⛔ curse from any die face you choose. Permanent curses cannot be removed at the Forge — only here.',           icon:'✨'},
+      {name:'Temple of Cleansing', cost:{grain:4,gold:4},  glory:5, prod:{}, special:'removePermanent2',   desc:'On purchase: removes 1 permanent ⛔ curse. Upgrades the shrine — buy again next season to remove another. More powerful than the base shrine.',           icon:'🕍'},
+      {name:'Sacred Sanctum',      cost:{grain:5,gold:5},  glory:8, prod:{}, special:'removePermanentAll', desc:'On purchase: wipes ALL permanent ⛔ curses from every die at once. Game-saving when you\'re close to the 8-curse death threshold.',                        icon:'🌟'},
+    ],
+    unlocks:[],
+  },
+  {
+    id:'quarantine', track:'grand', icon:'🏥', name:'Quarantine Hall',
+    desc:'Cures 🦠 Infected faces. Infection spreads every time an infected face is rolled — if left untreated it will eventually crowd out all your good faces.',
+    tiers:[
+      {name:'Quarantine Post',  cost:{grain:2,gold:2}, glory:2, prod:{}, special:'cureInfection',     desc:'On purchase: immediately cures all 🦠 Infected faces on all your dice, replacing each with a basic Grain face. Buy this as soon as infection appears.',  icon:'🏥'},
+      {name:'Apothecary Guild', cost:{grain:3,gold:3}, glory:4, prod:{}, special:'cureInfectionPerm', desc:'On purchase: cures all current 🦠 infections AND grants permanent immunity — infected faces can no longer spread for the rest of the game.',              icon:'💊'},
+    ],
+    unlocks:[],
+  },
+];
+
+// Track labels and colours
+const BUILDING_TRACKS = [
+  {id:'food',     label:'🌾 Food & Trade',     color:'#1a6010', desc:'Farm → Windmill → Bakery'},
+  {id:'industry', label:'⚒️ Industry & War',   color:'#505050', desc:'Workshop → Armory → Colosseum'},
+  {id:'prestige', label:'⚜️ Faith & Knowledge', color:'#5020a0', desc:'Chapel → Library → Alchemist'},
+  {id:'grand',    label:'🏰 Grand Buildings',   color:'#8a1010', desc:'Castle · Purification · Quarantine'},
+];
+
+function getBuildingTier(id) { return G.buildings ? (G.buildings[id] || 0) : 0; }
+function getBuildingData(id)  { return BUILDINGS.find(b => b.id === id); }
+function isBuildingUnlocked(b) {
+  if (!b.requires) return true;
+  return getBuildingTier(b.requires) >= 1;
+}
+function getNextTier(b) {
+  const cur = getBuildingTier(b.id);
+  return cur < b.tiers.length ? b.tiers[cur] : null;
+}
+function hasAdvWorkshop(){return G&&getBuildingTier('workshop')>=4;}
+
+// Compute production from all buildings
+function calcProd() {
+  const p = {grain:0, gold:0, glory:0, hammer:0};
+  if (!G.buildings) return p;
+  Object.entries(G.buildings).forEach(([id, tier]) => {
+    if (tier <= 0) return;
+    const b = getBuildingData(id);
+    if (!b) return;
+    // Sum production from all tiers up to current
+    for (let t = 0; t < tier; t++) {
+      // Only count production from the HIGHEST tier owned (not cumulative)
+    }
+    // Production from current tier only
+    const tierData = b.tiers[tier-1];
+    if (tierData?.prod) Object.entries(tierData.prod).forEach(([k,v]) => { p[k] = (p[k]||0) + v; });
+  });
+  return p;
+}
+
+function prodSrc(res) {
+  if (!G.buildings) return '';
+  const parts = [];
+  Object.entries(G.buildings).forEach(([id, tier]) => {
+    if (tier <= 0) return;
+    const b = getBuildingData(id);
+    const td = b?.tiers[tier-1];
+    if (td?.prod?.[res]) parts.push(`${td.icon||b.icon}`);
+  });
+  return parts.join('');
+}
+
+// Backward-compat: DEEDS array for cards/events that still reference it
+const DEEDS = [
+  {id:'purify',    cat:'special', name:'Purification Rite',  icon:'✨', cost:{grain:3,gold:3}, glory:3,  production:{}, special:'removePermanent', desc:'A holy rite REMOVES one permanent curse.',prodDesc:null,supply:99},
+  {id:'quarantine',cat:'special', name:'Quarantine Edict',   icon:'🏥', cost:{grain:2,gold:2}, glory:2,  production:{}, special:'cureInfection',   desc:'Purge all Infected faces from your dice.',prodDesc:null,supply:99},
+];
+
+const FORGE=[
+  {faceId:'GRAIN_2', cost:{hammer:1},          tier:1,tierName:'Common Forgings'},
+  {faceId:'GOLD_2',  cost:{hammer:1},          tier:1},
+  {faceId:'HAMMER_2',cost:{hammer:1},          tier:1},
+  {faceId:'GLORY_1', cost:{hammer:1},          tier:1},
+  {faceId:'GRAIN_3', cost:{hammer:2,grain:1},  tier:2,tierName:'Uncommon Forgings'},
+  {faceId:'GOLD_3',  cost:{hammer:2,gold:1},   tier:2},
+  {faceId:'GLORY_2', cost:{hammer:2},          tier:2},
+  {faceId:'MULTI_1', cost:{hammer:2},          tier:2},
+  // Tier 3 (Rare) — locked behind Advanced Workshop
+  {faceId:'MULTI_2', cost:{hammer:3,grain:1},  tier:3,tierName:'Rare Forgings 🔒 Requires Advanced Workshop',requiresAdv:true},
+  {faceId:'GLORY_3', cost:{hammer:3,grain:1},  tier:3,requiresAdv:true},
+  {faceId:'GRAIN_4', cost:{hammer:3,grain:2},  tier:3,requiresAdv:true},
+  {faceId:'GOLD_4',  cost:{hammer:3,gold:2},   tier:3,requiresAdv:true},
+  {faceId:'HAMMER_3',cost:{hammer:3},          tier:3,requiresAdv:true},
+  {faceId:'MIXED',   cost:{hammer:4,grain:1,gold:1},tier:3,requiresAdv:true},
+];
+// Legendary faces: offered only through special visitor events, not in normal forge list
+const LEGENDARY_VISITORS=[
+  {id:'wizard',    name:'The Arcane Wizard',    icon:'🧙',desc:'A wandering mage offers to enchant one of your die faces with eldritch power.',faceId:'LEG_ARCANE_SURGE',cost:{gold:6,grain:3}},
+  {id:'dragonlord',name:'Dragon Lord',          icon:'🐲',desc:'A great dragon, appeased, grants one face of its legendary hoard.',          faceId:'LEG_DRAGON_HOARD',cost:{gold:8}},
+  {id:'giant',     name:'Friendly Giant',       icon:'🏔️',desc:'A gentle giant offers a face of its abundant highland bounty.',               faceId:'LEG_GIANT_BOUNTY',cost:{grain:8}},
+  {id:'goblin',    name:'Goblin Merchant',      icon:'👺',desc:'A cunning goblin broker offers a tricky face that rewards the bold.',         faceId:'LEG_GOBLIN_TRICK',cost:{gold:4,grain:4}},
+  {id:'phoenix',   name:'The Phoenix',          icon:'🦅',desc:'A reborn phoenix brands one face with the fire of prestige and rebirth.',     faceId:'LEG_PHOENIX',     cost:{gold:5,grain:5}},
+  {id:'celestial', name:'Celestial Emissary',   icon:'🌟',desc:'A being from above blesses one face with balanced celestial gifts.',          faceId:'LEG_CELESTIAL',   cost:{grain:4,gold:4}},
+  {id:'nethermage',name:'Nether Mage',          icon:'💎',desc:'A shadowy mage offers forbidden riches — gold beyond imagining.',             faceId:'LEG_NETHER',      cost:{hammer:5,gold:3}},
+  {id:'warlord',   name:'Wandering Warlord',    icon:'⚔️',desc:'A retired warlord offers his arsenal knowledge — pure forge power.',          faceId:'LEG_WARLORDS',    cost:{hammer:6,grain:2}},
+];
+const EXTRA_DICE=[
+  {label:'Forge 3rd Die',cost:{hammer:4},       desc:'New die — basic faces + 1 curse.',starts:DIE_C},
+  {label:'Forge 4th Die',cost:{hammer:5,gold:2},desc:'Powerful 4th die, dilutes curse ratio.',starts:DIE_D},
+];
+const CARDS=[
+  {id:'harvest',   t:'good',name:'Bountiful Harvest',   i:'🌾',desc:'Crops overflow, granaries burst.',         e:{grain:5}},
+  {id:'caravan',   t:'good',name:'Trade Caravan',        i:'🐪',desc:'Merchants arrive with distant riches.',    e:{gold:5}},
+  {id:'blacksmith',t:'good',name:'Wandering Blacksmith', i:'🔨',desc:'A master smith offers his services free.', e:{hammer:4}},
+  {id:'treasury',  t:'good',name:'Royal Treasury',       i:'💎',desc:'The treasury overflows with coin & grain.',e:{grain:3,gold:3}},
+  {id:'blessing',  t:'good',name:'Papal Blessing',       i:'✝️', desc:'The Pope blesses your reign.',             e:{glory:5}},
+  {id:'extended',  t:'good',name:'Extended Season',      i:'📅',desc:'A gracious period — forge twice!',         e:{extraForge:true}},
+  {id:'free_forge',t:'good',name:'Gift of the Smith',    i:'⚙️', desc:'A benevolent smith forges one face free.', e:{freeForge:true}},
+  {id:'triumph',   t:'good',name:'Military Triumph',     i:'🗡️', desc:'Armies return victorious with spoils.',    e:{glory:4,gold:3}},
+  {id:'discovery', t:'good',name:'Rich Gold Vein',       i:'💡',desc:'Miners strike an extraordinary ore vein.',  e:{gold:6}},
+  {id:'bumper',    t:'good',name:'Bumper Crop',          i:'🌻',desc:'Exceptional harvest fills every granary.',  e:{grain:6}},
+  {id:'omens',     t:'good',name:'Good Omens',           i:'⭐',desc:'The stars align in your favour.',           e:{glory:4}},
+  {id:'patronage', t:'good',name:'Royal Patronage',      i:'👑',desc:'Nobles pledge grain and tribute.',          e:{grain:3,glory:3}},
+  {id:'windfall',  t:'good',name:'Merchant Windfall',    i:'💰',desc:'A rare trade deal floods the coffers.',      e:{gold:4,grain:2}},
+  {id:'extra_roll',t:'good',name:"Fate's Second Chance", i:'🍀',desc:'The fates smile! Roll your dice once more this season.',e:{extraRoll:true}},
+  {id:'faceswap',  t:'good',name:'The Trickster God',    i:'🃏',desc:'A divine jester lets you swap faces between two dice.',e:{faceSwap:true}},
+  // Holy Relic — rare good event that cleanses a single permanent curse
+  {id:'relic',     t:'good',name:'Holy Relic Found',     i:'🕊️', desc:'Pilgrims unearth a sacred relic. One permanent curse is cleansed from your dice.',e:{removePerm:true}},
+  // ── VISITOR EVENTS (good — offer a legendary face for purchase) ──
+  ...LEGENDARY_VISITORS.map(v=>({id:'visitor_'+v.id,t:'visitor',name:v.name,i:v.icon,desc:v.desc,e:{visitor:v.id}})),
+  // ── BAD CARDS ──
+  // Regular afflictions — these create normal curse faces, removable at the Forge
+  {id:'barbarians',t:'bad', name:'Barbarian Raid',       i:'🪓',desc:'Barbarians sweep your borders, pillaging.', e:{grain:-2,gold:-2}},
+  {id:'blackdeath',t:'bad', name:'The Black Death',      i:'💀',desc:'Plague spreads from village to village.',   e:{grain:-2,gold:-2}},
+  {id:'famine',    t:'bad', name:'Great Famine',         i:'🌵',desc:'Crops fail across the entire kingdom.',     e:{grain:-4}},
+  {id:'dragon',    t:'bad', name:'Dragon Attack',        i:'🐉',desc:'A dragon terrorizes villages, steals gold.',e:{gold:-4}},
+  {id:'rebellion', t:'bad', name:'Noble Rebellion',      i:'⚔️',desc:'The nobles rebel, stripping prestige.',     e:{glory:-3}},
+  {id:'winter_bad',t:'bad', name:'Harsh Winter',         i:'❄️',desc:'Bitter cold shuts the forge this season.',  e:{grain:-2,gold:-1,skipForge:true}},
+  {id:'corrupt',   t:'bad', name:'Corrupt Officials',    i:'📜',desc:'Embezzlement drains the treasury.',         e:{gold:-4}},
+  {id:'fire',      t:'bad', name:'Great Wildfire',       i:'🔥',desc:'Fire sweeps through farmlands and stores.', e:{grain:-3}},
+  {id:'freezedice',t:'bad', name:"The Witch's Paralysis",i:'🫥',desc:'Dark magic seizes your dice — they cannot be rolled this season!',e:{freezeDice:true}},
+  {id:'loadedcurse',t:'bad',name:'The Loaded Curse',     i:'⚖️',desc:'A warlock loads one die against you — it will always favour the worst face until broken.',e:{loadedCurse:true}},
+  // Curse-face cards — add a regular (forgeable) curse face to a die
+  {id:'addcurse',  t:'bad', name:'Demonic Infestation',  i:'👿',desc:'A demon taints one die face with a curse — visit the Forge to remove it.',e:{addCurseFace:true}},
+  {id:'addcurse2', t:'bad', name:'Sorcerer\'s Mark',     i:'🌀',desc:'A sorcerer marks one die face with a dark sigil — remove it at the Forge.',e:{addCurseFace:true}},
+  {id:'infected',  t:'bad', name:'The Infection',        i:'🦠',desc:'A diseased face appears on one die. If rolled, it spreads to another face!',e:{infect:true}},
+  // Permanent curse cards — RARE, require Purification Shrine or legendary face to remove
+  {id:'witches',   t:'bad', name:"Witch's Coven",        i:'🧿',desc:'A dark coven binds a PERMANENT curse to one die — only a Purification Shrine or legendary face can break it.',e:{permCurse:'one'}},
+  {id:'curseddie', t:'bad', name:'Ancient Hex',          i:'🎲',desc:'An ancient warlock places a PERMANENT hex on one die face. Forge cannot remove it — seek Purification.',e:{permCurse:'one'}},
+];
+const DIFFS=[
+  {id:'squire',name:'Squire',   target:25,desc:'A gentle first rule of the realm.'},
+  {id:'knight',name:'Knight',   target:40,desc:'A worthy challenge for brave souls.'},
+  {id:'baron', name:'Baron',    target:60,desc:'Only experienced lords prevail.'},
+  {id:'king',  name:'High King',target:85,desc:'The most demanding conquest.'},
+];
+const RANKS=[
+  {min:0,t:'Serf'},{min:12,t:'Freeman'},{min:25,t:'Squire'},{min:40,t:'Knight'},
+  {min:55,t:'Baron'},{min:72,t:'Earl'},{min:90,t:'Duke'},{min:120,t:'High King'},
+];
+const SNAMES=['Spring','Summer','Harvest','Winter'];
+const SICONS=['🌱','☀️','🍂','❄️'];
+function sName(s){return SNAMES[(s-1)%4];}
+function sIcon(s){return SICONS[(s-1)%4];}
+function getRank(g){let r=RANKS[0];for(const t of RANKS)if(g>=t.min)r=t;return r;}
+
+// ═══════════════════════════
+//  STATE
+// ═══════════════════════════
+let G=null;
+function isWinter(s){return(s-1)%4===3;}// season 4,8,12... are Winter
+function initGame(diffId){
+  const supply={purify:99,quarantine:99};
+  const diff=DIFFS.find(d=>d.id===diffId)||DIFFS[0];
+  return{
+    diff,season:1,phase:'ROLL',
+    dice:[[...DIE_A],[...DIE_B]],
+    permanentCurses:[],
+    resources:{grain:5,gold:5,hammer:2},
+    glory:0,deeds:[],buildings:{},supply,
+    lastRolls:null,
+    log:['⚔️ Your reign begins! You have ⚒️2 — visit the Forge on your first turn.'],
+    ad:{fr:1,frMax:1,freeForge:false,skipForge:false,deedDone:false,dieBought:false,extraRoll:false,diceFrozen:false,faceSwap:false},
+    modal:null,pendingUpgrade:null,negEvent:null,
+    pendingCard:null,pendingVisitor:null,
+    deck:shuffle([...CARDS]),discard:[],
+    rolling:false,rollGen:0,
+    wonGame:false,deathReason:null,
+    DEATH_THRESHOLD:8,
+    loadedDice:[],
+    rollCount:0,
+    pendingFaceSwap:null,
+    infections:[],  // [{die,face}] — infected faces that spread on roll
+  };
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const canAfford=(r,c)=>Object.entries(c).every(([k,v])=>(r[k]||0)>=v);
+const spend=(r,c)=>{const n={...r};Object.entries(c).forEach(([k,v])=>{n[k]=Math.max(0,(n[k]||0)-v);});return n;};
+function addLog(msg,cls=''){G.log.unshift(cls?{msg,cls}:msg);if(G.log.length>35)G.log.pop();}
+const lm=e=>typeof e==='string'?e:e.msg;
+const lc=e=>typeof e==='string'?'':e.cls;
+function isPerm(di,fi){return G.permanentCurses.some(p=>p.die===di&&p.face===fi);}
+function permCount(){return G.permanentCurses.length;}
+
+
+function applyProd(){
+  const p=calcProd();const pts=[];
+  if(p.grain >0){G.resources.grain =(G.resources.grain ||0)+p.grain; pts.push(`🌾+${p.grain}`);}
+  if(p.gold  >0){G.resources.gold  =(G.resources.gold  ||0)+p.gold;  pts.push(`💰+${p.gold}`);}
+  if(p.hammer>0){G.resources.hammer=(G.resources.hammer||0)+p.hammer;pts.push(`⚒️+${p.hammer}`);}
+  if(p.glory >0){G.glory+=p.glory;                                    pts.push(`⚜️+${p.glory}`);}
+  if(pts.length)addLog({msg:`📦 Production: ${pts.join(' ')}`,cls:'log-prod'});
+}
+function drawCard(){
+  if(!G.deck.length){G.deck=shuffle([...G.discard]);G.discard=[];}
+  const c=G.deck.pop();G.discard.push(c);return c;
+}
+function addPermCurse(di,fi){if(!isPerm(di,fi))G.permanentCurses.push({die:di,face:fi});}
+function applyPermCurseAll(){
+  G.dice.forEach((die,di)=>{
+    const gi=die.findIndex((fid,fi)=>!F[fid].neg&&!isPerm(di,fi));
+    if(gi>=0){die[gi]=CURSE_IDS[Math.floor(Math.random()*CURSE_IDS.length)];addPermCurse(di,gi);}
+  });
+}
+function applyPermCurseOne(){
+  const di=Math.floor(Math.random()*G.dice.length);
+  const die=G.dice[di];
+  const gi=die.findIndex((fid,fi)=>!F[fid].neg&&!isPerm(di,fi));
+  if(gi>=0){die[gi]=CURSE_IDS[Math.floor(Math.random()*CURSE_IDS.length)];addPermCurse(di,gi);}
+}
+function isInfected(di,fi){return G.infections&&G.infections.some(x=>x.die===di&&x.face===fi);}
+function addInfection(di,fi){
+  if(!G.infections)G.infections=[];
+  if(!isInfected(di,fi)&&!isPerm(di,fi)){
+    G.dice[di][fi]='INFECTION';
+    G.infections.push({die:di,face:fi});
+    addLog({msg:`🦠 Die ${di+1} Face ${fi+1} is INFECTED — rolling it will spread the plague!`,cls:'log-cb'});
+  }
+}
+function spreadInfection(){
+  const candidates=[];
+  G.dice.forEach((die,dj)=>{
+    die.forEach((fid,fj)=>{
+      if(!isInfected(dj,fj)&&!isPerm(dj,fj)&&!F[fid].neg)candidates.push({die:dj,face:fj});
+    });
+  });
+  if(candidates.length){
+    const pick=candidates[Math.floor(Math.random()*candidates.length)];
+    addInfection(pick.die,pick.face);
+    addLog({msg:`🦠 Infection spreads to Die ${pick.die+1}!`,cls:'log-cb'});
+  }
+}
+function cureAllInfections(){
+  if(!G.infections||!G.infections.length){addLog({msg:'🏥 Quarantine Edict: no infections found.',cls:'log-good'});return;}
+  G.infections.forEach(inf=>{if(G.dice[inf.die]&&G.dice[inf.die][inf.face]==='INFECTION')G.dice[inf.die][inf.face]='GRAIN_1';});
+  addLog({msg:`🏥 Quarantine Edict: ${G.infections.length} infection(s) cured!`,cls:'log-good'});
+  G.infections=[];
+}
+function applyCardEffect(card){
+  const e=card.e;const pts=[];
+  if(e.grain)  {G.resources.grain =Math.max(0,(G.resources.grain ||0)+e.grain); pts.push(`🌾${e.grain>0?'+':''}${e.grain}`);}
+  if(e.gold)   {G.resources.gold  =Math.max(0,(G.resources.gold  ||0)+e.gold);  pts.push(`💰${e.gold>0?'+':''}${e.gold}`);}
+  if(e.hammer) {G.resources.hammer=Math.max(0,(G.resources.hammer||0)+e.hammer);pts.push(`⚒️+${e.hammer}`);}
+  if(e.glory)  {G.glory=Math.max(0,G.glory+e.glory);                            pts.push(`⚜️${e.glory>0?'+':''}${e.glory}`);}
+  if(e.extraForge){G.ad.frMax=2;G.ad.fr=2;pts.push('Forge ×2 this season');}
+  if(e.freeForge) {G.ad.freeForge=true;pts.push('FREE forge this season');}
+  if(e.skipForge) {G.ad.skipForge=true;pts.push('⚠️ Forge blocked');}
+  if(e.extraRoll) {G.ad.extraRoll=true;pts.push('🍀 Extra roll granted!');}
+  if(e.faceSwap)  {G.ad.faceSwap=true;G.modal='faceswap';pts.push('🃏 Choose faces to swap!');}
+  if(e.freezeDice){G.ad.diceFrozen=true;G.phase='ACTION';pts.push('🫥 Dice frozen this season!');}
+  if(e.loadedCurse){
+    const candidates=G.dice.map((_,i)=>i).filter(i=>!G.loadedDice.includes(i));
+    if(candidates.length){
+      const di=candidates[Math.floor(Math.random()*candidates.length)];
+      G.loadedDice.push(di);
+      pts.push(`⚖️ Die ${di+1} is now LOADED!`);
+      addLog({msg:`⚖️ Die ${di+1} is LOADED — negative faces weighted until forged away!`,cls:'log-perm'});
+    }
+  }
+  if(e.addCurseFace){
+    const di=Math.floor(Math.random()*G.dice.length);
+    const die=G.dice[di];
+    const gi=die.findIndex((fid,fi)=>!F[fid].neg&&!isPerm(di,fi)&&!isInfected(di,fi));
+    if(gi>=0){
+      const cid=CURSE_IDS[Math.floor(Math.random()*CURSE_IDS.length)];
+      die[gi]=cid;
+      pts.push(`👿 Die ${di+1} gained a ${F[cid].sym} curse face!`);
+      addLog({msg:`👿 Demonic Infestation: Die ${di+1} sprouted a new ${F[cid].label} face!`,cls:'log-perm'});
+    }
+    checkAllCursedDie();
+  }
+  if(e.infect){
+    const di=Math.floor(Math.random()*G.dice.length);
+    const die=G.dice[di];
+    const gi=die.findIndex((fid,fi)=>!F[fid].neg&&!isPerm(di,fi)&&!isInfected(di,fi));
+    if(gi>=0){addInfection(di,gi);pts.push(`🦠 Die ${di+1} is INFECTED!`);}
+    else pts.push('🦠 No face to infect — spared!');
+  }
+  if(e.visitor){
+    G.pendingVisitor=LEGENDARY_VISITORS.find(v=>v.id===e.visitor);
+    G.modal='visitor';
+    pts.push(`${card.i} A visitor arrives with a legendary offer!`);
+  }
+  if(e.removePerm){
+    if(G.permanentCurses.length>0){G.modal='removePerm';}
+    else{pts.push('🕊️ No permanent curses to cleanse — but the relic blesses you regardless!');G.glory+=1;}
+  }
+  if(e.permCurse==='one'){applyPermCurseOne();pts.push('☠️ One PERMANENT curse added — seek Purification to remove it!');}
+  const logCls=card.t==='good'?'log-cg':card.t==='visitor'?'log-cg':'log-cb';
+  const logIcon=card.t==='good'?'✨':card.t==='visitor'?card.i:'☠️';
+  addLog({msg:`${logIcon} ${card.name}: ${pts.join(' ')}`,cls:logCls});
+}
+function cardEffectText(card){
+  const e=card.e;const pts=[];
+  if(e.grain)      pts.push(`${e.grain>0?'+':''}${e.grain} 🌾 Grain`);
+  if(e.gold)       pts.push(`${e.gold>0?'+':''}${e.gold} 💰 Gold`);
+  if(e.hammer)     pts.push(`+${e.hammer} ⚒️ Hammers`);
+  if(e.glory)      pts.push(`${e.glory>0?'+':''}${e.glory} ⚜️ Prestige`);
+  if(e.extraForge) pts.push('Forge TWICE this season');
+  if(e.freeForge)  pts.push('One FREE forge this season');
+  if(e.skipForge)  pts.push('⚠️ Forge blocked this season');
+  if(e.extraRoll)  pts.push('🍀 Roll your dice ONE extra time this season!');
+  if(e.faceSwap)   pts.push('🃏 Swap one face between any two dice!');
+  if(e.freezeDice) pts.push('🫥 Your dice are FROZEN — cannot roll this season!');
+  if(e.loadedCurse)pts.push('⚖️ One die is now LOADED — weighted toward curses until that die face is forged away!');
+  if(e.addCurseFace)pts.push('👿 A demon adds an extra curse face to one of your dice!');
+  if(e.infect)     pts.push('🦠 One die face becomes INFECTED — if rolled it will spread to another face!');
+  if(e.visitor){const v=LEGENDARY_VISITORS.find(x=>x.id===e.visitor);if(v)pts.push(`${v.icon} Visitor offers: ${F[v.faceId].sym} ${F[v.faceId].label} — accept or decline`);}
+  if(e.removePerm)  pts.push('🕊️ Cleanses ONE permanent curse from your dice');
+  if(e.permCurse==='one')pts.push('☠️ One face PERMANENTLY cursed — Forge cannot remove it! Seek a Purification Shrine.');
+  return pts.join('\n');
+}
+
+// ═══════════════════════════
+//  MATTER.JS DICE PHYSICS
+// ═══════════════════════════
+let dicePhysics=null; // holds {engine,render,runner,bodies,rolls,settled}
+let burstParticles=[];
+
+// ── Shared canvas drawing helpers ──────────────────────────────────────────
+function adjustBrightness(hex,factor){
+  const r=parseInt(hex.slice(1,3),16),g2=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`#${Math.min(255,Math.round(r*factor)).toString(16).padStart(2,'0')}${Math.min(255,Math.round(g2*factor)).toString(16).padStart(2,'0')}${Math.min(255,Math.round(b*factor)).toString(16).padStart(2,'0')}`;
+}
+function lighten(hex,amt){
+  const r=parseInt(hex.slice(1,3),16),g2=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`#${Math.min(255,Math.max(0,Math.round(r+amt*255))).toString(16).padStart(2,'0')}${Math.min(255,Math.max(0,Math.round(g2+amt*255))).toString(16).padStart(2,'0')}${Math.min(255,Math.max(0,Math.round(b+amt*255))).toString(16).padStart(2,'0')}`;
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function drawTableSurface(ctx,W,H){
+  const style=getComputedStyle(document.body);
+  const tc=style.getPropertyValue('--canvas-table').trim()||'#c8a860';
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,adjustBrightness(tc,1.08));
+  g.addColorStop(0.5,tc);
+  g.addColorStop(1,adjustBrightness(tc,0.86));
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=0.06;ctx.strokeStyle='#000';ctx.lineWidth=1;
+  for(let i=0;i<H;i+=9){
+    ctx.beginPath();ctx.moveTo(0,i+Math.sin(i*0.38)*0.6);ctx.lineTo(W,i+0.8+Math.sin(i*0.38+1)*0.6);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.95);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.22)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+}
+
+function drawDieOnCanvas(ctx,x,y,angle,sz,faceData,permFlag,negFlag,isLoaded,settled,isWinterDie){
+  const hs=sz/2,r=sz*0.16;
+
+  // ── Per-face colour identity ─────────────────────────────────────────────
+  // Each face type gets a distinct dark body + bright accent so it reads
+  // instantly even at small sizes on a dark background.
+  function faceColors(fd,perm,neg,loaded,winter){
+    if(winter)   return{bg:['#0d2a4a','#1a4070'],border:'#4080c0',label:'#80c0ff',shadow:'rgba(60,120,220,0.7)'};
+    if(perm)     return{bg:['#3a0808','#200404'],border:'#cc2020',label:'#ff6060',shadow:'rgba(200,20,20,0.8)'};
+    if(neg)      return{bg:['#2e0a0a','#1a0606'],border:'#b03030',label:'#ff8080',shadow:'rgba(180,30,30,0.7)'};
+    if(loaded)   return{bg:['#2a1800','#1a0e00'],border:'#b06000',label:'#ffa040',shadow:'rgba(160,80,0,0.6)'};
+    // Positive faces — colour by resource type
+    if(fd.grain>0&&fd.gold===0&&fd.hammer===0&&fd.glory===0)
+                 return{bg:['#1e2c00','#2e4400'],border:'#80b020',label:'#c8f040',shadow:'rgba(140,200,20,0.6)'};
+    if(fd.gold>0&&fd.grain===0&&fd.hammer===0&&fd.glory===0)
+                 return{bg:['#1a1a00','#2e2800'],border:'#b09000',label:'#ffd840',shadow:'rgba(220,180,0,0.65)'};
+    if(fd.hammer>0&&fd.grain===0&&fd.gold===0&&fd.glory===0)
+                 return{bg:['#0a1428','#101e38'],border:'#4070b0',label:'#80b8f0',shadow:'rgba(60,120,200,0.6)'};
+    if(fd.glory>0&&fd.grain===0&&fd.gold===0&&fd.hammer===0)
+                 return{bg:['#180a30','#240e48'],border:'#8040c0',label:'#c080ff',shadow:'rgba(160,60,220,0.65)'};
+    if(fd.legendary)
+                 return{bg:['#1a1400','#2e2400'],border:fd.legendaryGlow||'#f5c842',label:fd.legendaryGlow||'#f5c842',shadow:fd.legendaryGlow||'#f5c842'};
+    // Mixed resource faces
+                 return{bg:['#101820','#182430'],border:'#507090',label:'#90c0e0',shadow:'rgba(80,140,180,0.55)'};
+  }
+
+  const C=faceColors(faceData,permFlag,negFlag,isLoaded,isWinterDie);
+
+  ctx.save();
+  // drop shadow
+  ctx.globalAlpha=0.28;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(x,y+hs*0.78,sz*0.44,sz*0.09,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.translate(x,y);ctx.rotate(angle);
+
+  // body gradient
+  ctx.beginPath();ctx.roundRect(-hs,-hs,sz,sz,r);
+  const bg=ctx.createLinearGradient(-hs,-hs,hs,hs);
+  bg.addColorStop(0,C.bg[0]);bg.addColorStop(1,C.bg[1]);
+  ctx.fillStyle=bg;ctx.strokeStyle=C.border;ctx.lineWidth=sz*0.05;
+
+  // settled glow
+  if(settled){ctx.shadowColor=C.shadow;ctx.shadowBlur=18;}
+  ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+
+  // perm double-ring overlay
+  if(permFlag){ctx.strokeStyle='rgba(255,60,60,0.5)';ctx.lineWidth=sz*0.07;ctx.beginPath();ctx.roundRect(-hs,-hs,sz,sz,r);ctx.stroke();}
+
+  // top-edge highlight (gives depth)
+  const hi=ctx.createLinearGradient(0,-hs,0,-hs+sz*0.35);
+  hi.addColorStop(0,'rgba(255,255,255,0.18)');hi.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=hi;ctx.beginPath();ctx.roundRect(-hs,-hs,sz,sz*0.5,r);ctx.fill();
+
+  // corner pips — subtle, matching border colour
+  const po=sz*0.27,pr=sz*0.04;
+  ctx.fillStyle=C.border+'66';
+  [[-po,-po],[po,-po],[-po,po],[po,po]].forEach(([px,py])=>{ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();});
+
+  // emoji — rendered bright on dark background
+  ctx.font=`${sz*0.44}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  ctx.fillText(faceData.sym,0,sz*0.04);
+
+  // label when settled — coloured to match face type
+  if(settled){
+    ctx.font=`bold ${sz*0.18}px sans-serif`;
+    ctx.fillStyle=C.label;
+    const lbl=faceData.label.length>10?faceData.label.slice(0,9)+'…':faceData.label;
+    ctx.fillText(lbl,0,hs*0.66);
+  }
+  ctx.restore();
+}
+
+function spawnBurst(x,y,face){
+  const labels=[];
+  if(face.grain)labels.push({t:`🌾${face.grain>0?'+':''}${face.grain}`,c:face.grain>0?'#1a6010':'#b01818'});
+  if(face.gold) labels.push({t:`💰${face.gold>0?'+':''}${face.gold}`,c:face.gold>0?'#8a5c10':'#b01818'});
+  if(face.hammer)labels.push({t:`⚒️+${face.hammer}`,c:'#2848a0'});
+  if(face.glory)labels.push({t:`⚜️${face.glory>0?'+':''}${face.glory}`,c:'#5020a0'});
+  if(face.neg&&labels.length===0)labels.push({t:face.label,c:'#cc0000'});
+  labels.forEach((l,j)=>{
+    burstParticles.push({x,y:y-8,vx:(j-labels.length/2)*22+(Math.random()-0.5)*12,vy:-32-Math.random()*18,t:l.t,c:l.c,life:1});
+  });
+}
+
+function updateBursts(ctx,dt){
+  burstParticles=burstParticles.filter(p=>{
+    p.life-=dt*1.3;if(p.life<=0)return false;
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=65*dt;
+    ctx.save();
+    ctx.globalAlpha=Math.min(1,p.life*2.2);
+    ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=p.c;ctx.shadowColor=p.c;ctx.shadowBlur=7;
+    ctx.fillText(p.t,p.x,p.y);
+    ctx.restore();
+    return true;
+  });
+}
+
+
+
+// ═══════════════════════════════════════════════════════
+//  3D DICE ENGINE — Three.js + Cannon-ES
+// ═══════════════════════════════════════════════════════
+
+let _THREE = null, _CANNON = null, _libsLoaded = false;
+async function _loadLibs() {
+  if (_libsLoaded) return;
+  [_THREE, _CANNON] = await Promise.all([
+    import('https://unpkg.com/three@0.160.0/build/three.module.js'),
+    import('https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js')
+  ]);
+  _libsLoaded = true;
+}
+
+// Persistent scene — survives render() calls, only torn down on new roll
+let _ds = null;
+
+// Hard teardown — destroys renderer and removes from DOM
+function teardownPhysics() {
+  if (!_ds) return;
+  if (_ds.rafId) { cancelAnimationFrame(_ds.rafId); _ds.rafId = null; }
+  if (_ds.renderer) {
+    _ds.renderer.dispose();
+    const c = _ds.renderer.domElement;
+    if (c && c.parentNode) c.parentNode.removeChild(c);
+  }
+  if (_ds.overlay && _ds.overlay.parentNode)
+    _ds.overlay.parentNode.removeChild(_ds.overlay);
+  _ds = null;
+}
+
+// ── Face texture builder ─────────────────────────────────────────────────────
+function _makeFaceTex(T, face, isWinter) {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 256;
+  const ctx = cv.getContext('2d');
+
+  // Pick background + border + label colour by face type
+  let bgA, bgB, border, labelCol;
+  if (isWinter) {
+    bgA='#0d2440'; bgB='#162e54'; border='#4a90d0'; labelCol='#90c8ff';
+  } else if (face.legendary) {
+    const gc = face.legendaryGlow || '#f5c842';
+    bgA='#1a1200'; bgB='#2e2000'; border=gc; labelCol=gc;
+  } else if (face.neg) {
+    // All curse/negative faces: deep red
+    bgA='#2a0606'; bgB='#1a0404'; border='#cc2020'; labelCol='#ff7070';
+  } else if (face.grain > 0 && face.gold === 0 && face.hammer === 0 && face.glory === 0) {
+    // Pure grain: dark earthy brown
+    bgA='#2e1a06'; bgB='#1e1004'; border='#a06020'; labelCol='#e09040';
+  } else if (face.gold > 0 && face.grain === 0 && face.hammer === 0 && face.glory === 0) {
+    // Pure gold: deep dark gold/amber
+    bgA='#241a00'; bgB='#160e00'; border='#c8a000'; labelCol='#ffd040';
+  } else if (face.hammer > 0 && face.grain === 0 && face.gold === 0 && face.glory === 0) {
+    // Pure hammer: dark steel grey
+    bgA='#161e28'; bgB='#0e141e'; border='#6080a0'; labelCol='#a0c0e0';
+  } else if (face.glory > 0 && face.grain === 0 && face.gold === 0 && face.hammer === 0) {
+    // Pure prestige: deep purple
+    bgA='#1a0830'; bgB='#100420'; border='#8040c0'; labelCol='#c080ff';
+  } else {
+    // Mixed resource faces: dark teal
+    bgA='#0a1e20'; bgB='#061418'; border='#4090a0'; labelCol='#70c8d8';
+  }
+
+  // Background gradient
+  const g = ctx.createLinearGradient(0, 0, 256, 256);
+  g.addColorStop(0, bgA); g.addColorStop(1, bgB);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Subtle inner highlight at top
+  const hi = ctx.createLinearGradient(0, 0, 0, 80);
+  hi.addColorStop(0, 'rgba(255,255,255,0.10)'); hi.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hi; ctx.fillRect(0, 0, 256, 80);
+
+  // Border
+  ctx.strokeStyle = border; ctx.lineWidth = 14;
+  ctx.beginPath(); ctx.roundRect(7, 7, 242, 242, 26); ctx.stroke();
+
+  // Label top-left
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillStyle = labelCol;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  const lbl = face.label.length > 12 ? face.label.slice(0, 11) + '…' : face.label;
+  ctx.fillText(lbl, 16, 14);
+
+  // Main emoji — white so it pops on any dark bg
+  ctx.font = '110px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(face.sym, 128, 152);
+
+  const tex = new T.CanvasTexture(cv);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// ── Die mesh ─────────────────────────────────────────────────────────────────
+// faceIds[0]=top(+Y), [1]=front(+Z), [2]=right(+X), [3]=bottom(-Y), [4]=back(-Z), [5]=left(-X)
+// BoxGeometry material slots: +X=0, -X=1, +Y=2, -Y=3, +Z=4, -Z=5
+const _DIE_UNIT = 2.2; // world-unit size of each die
+function _buildDieMesh(T, faceIds, isWinter) {
+  const mats = faceIds.map(fid =>
+    new T.MeshStandardMaterial({ map: _makeFaceTex(T, F[fid], isWinter), roughness: 0.15, metalness: 0.06 })
+  );
+  // map our logical faces to BoxGeometry slots
+  const slotted = [mats[2], mats[5], mats[0], mats[3], mats[1], mats[4]];
+  const mesh = new T.Mesh(new T.BoxGeometry(_DIE_UNIT, _DIE_UNIT, _DIE_UNIT), slotted);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh._faceIds = faceIds;
+  return mesh;
+}
+
+// Which faceIds[] index is facing up (+Y world) given this quaternion?
+function _getTopFace(T, quat) {
+  const tests = [
+    { idx: 2, v: new T.Vector3(1,0,0) }, { idx: 5, v: new T.Vector3(-1,0,0) },
+    { idx: 0, v: new T.Vector3(0,1,0) }, { idx: 3, v: new T.Vector3(0,-1,0) },
+    { idx: 1, v: new T.Vector3(0,0,1) }, { idx: 4, v: new T.Vector3(0,0,-1) },
+  ];
+  const up = new T.Vector3(0, 1, 0);
+  let best = -Infinity, bestIdx = 0;
+  tests.forEach(({ idx, v }) => {
+    const dot = v.clone().applyQuaternion(quat).dot(up);
+    if (dot > best) { best = dot; bestIdx = idx; }
+  });
+  return bestIdx;
+}
+
+// ── Build the scene (called once per roll) ───────────────────────────────────
+function _buildScene(T, W, H) {
+  const scene = new T.Scene();
+  // Warm dark amber background — clearly not black
+  scene.background = new T.Color(0x0d3320);
+
+  const camera = new T.PerspectiveCamera(58, W / H, 0.1, 60);
+  // Top-down view — looking straight down with a slight forward tilt
+  camera.position.set(0, 12, 2);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new T.WebGLRenderer({ antialias: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+
+  // Bright warm ambient so table surface is clearly visible
+  scene.add(new T.AmbientLight(0xffe8b0, 0.9));
+
+  const key = new T.DirectionalLight(0xfff4d0, 1.4);
+  key.position.set(5, 10, 6); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 1; key.shadow.camera.far = 25;
+  key.shadow.camera.left = -7; key.shadow.camera.right = 7;
+  key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
+  key.shadow.bias = -0.003;
+  scene.add(key);
+  const fill = new T.DirectionalLight(0xb0c8ff, 0.4);
+  fill.position.set(-5, 4, -4);
+  scene.add(fill);
+
+  // Table surface — casino green felt
+  const table = new T.Mesh(
+    new T.PlaneGeometry(20, 20),
+    new T.MeshStandardMaterial({ color: 0x1a6b3a, roughness: 0.93, metalness: 0 })
+  );
+  table.rotation.x = -Math.PI / 2;
+  table.receiveShadow = true;
+  scene.add(table);
+
+  // Felt grain lines — darker green, clearly readable
+  const lm = new T.LineBasicMaterial({ color: 0x0d4020, transparent: true, opacity: 0.65 });
+  for (let i = -10; i <= 10; i += 1.0) {
+    const pts = [new T.Vector3(-10, 0.01, i), new T.Vector3(10, 0.01, i)];
+    scene.add(new T.Line(new T.BufferGeometry().setFromPoints(pts), lm));
+  }
+  for (let i = -10; i <= 10; i += 1.0) {
+    const pts = [new T.Vector3(i, 0.01, -10), new T.Vector3(i, 0.01, 10)];
+    scene.add(new T.Line(new T.BufferGeometry().setFromPoints(pts), lm));
+  }
+
+  return { scene, camera, renderer };
+}
+
+// ── Physics world ────────────────────────────────────────────────────────────
+function _buildWorld(C) {
+  const world = new C.World({ gravity: new C.Vec3(0, -30, 0) });
+
+  // Bouncier walls than floor — dice rebound back into view
+  const wallMat = new C.Material('wall');
+  const floorMat = new C.Material('floor');
+  const wallContact = new C.ContactMaterial(wallMat, floorMat, { restitution: 0.55, friction: 0.3 });
+  const wallWall = new C.ContactMaterial(wallMat, wallMat, { restitution: 0.6, friction: 0.25 });
+  const floorFloor = new C.ContactMaterial(floorMat, floorMat, { restitution: 0.18, friction: 0.7 });
+  world.addContactMaterial(wallContact);
+  world.addContactMaterial(wallWall);
+  world.addContactMaterial(floorFloor);
+  world.solver.iterations = 16;
+
+  // Floor
+  const floor = new C.Body({ type: C.Body.STATIC, shape: new C.Plane(), material: floorMat });
+  floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  world.addBody(floor);
+
+  // Walls — camera is at y=12, z=2, looking at origin. Visible area at floor is roughly:
+  //   x: ±3.2  z: -3.2 to +4.0
+  // Place walls slightly inside that so dice can never escape, with plenty of height.
+  // [x, y, z,  rx, ry, rz,  half-extents wx,wy,wz]
+  const WALL_H = 6; // tall enough that a bouncing die can't fly over
+  const wallDefs = [
+    [0, WALL_H/2, -3.3, 0, 0, 0,        3.5, WALL_H, 0.22], // back
+    [0, WALL_H/2,  4.1, 0, 0, 0,        3.5, WALL_H, 0.22], // front
+    [-3.3, WALL_H/2, 0, 0, Math.PI/2, 0, 3.5, WALL_H, 0.22], // left
+    [ 3.3, WALL_H/2, 0, 0, Math.PI/2, 0, 3.5, WALL_H, 0.22], // right
+  ];
+  wallDefs.forEach(([x,y,z, rx,ry,rz, wx,wy,wz]) => {
+    const b = new C.Body({ type: C.Body.STATIC, shape: new C.Box(new C.Vec3(wx,wy,wz)), material: wallMat });
+    b.position.set(x,y,z);
+    b.quaternion.setFromEuler(rx,ry,rz);
+    world.addBody(b);
+  });
+
+  return world;
+}
+
+// ── Burst labels overlay ─────────────────────────────────────────────────────
+function _spawnBurst(overlay, sx, sy, face, W, H) {
+  const labels = [];
+  if (face.grain) labels.push({ t: `🌾${face.grain>0?'+':''}${face.grain}`, c: face.grain>0?'#5ab830':'#cc2020' });
+  if (face.gold)  labels.push({ t: `💰${face.gold>0?'+':''}${face.gold}`,   c: face.gold>0?'#c89030':'#cc2020' });
+  if (face.hammer) labels.push({ t: `⚒️+${face.hammer}`, c: '#4060c8' });
+  if (face.glory)  labels.push({ t: `⚜️${face.glory>0?'+':''}${face.glory}`, c: '#8030c0' });
+  if (face.neg && labels.length === 0) labels.push({ t: face.label, c: '#cc0000' });
+  labels.forEach((l, j) => {
+    const el = document.createElement('div');
+    const ox = (j-(labels.length-1)/2)*38 + (Math.random()-0.5)*16;
+    el.style.cssText = `position:absolute;left:${sx+ox}px;top:${sy}px;font:bold 14px sans-serif;color:${l.c};text-shadow:0 1px 5px rgba(0,0,0,.9);pointer-events:none;white-space:nowrap;`;
+    el.textContent = l.t;
+    overlay.appendChild(el);
+    let vy=-55, life=1.0, lastT=null;
+    const vxd=(Math.random()-0.5)*28;
+    (function anim(t){
+      if(!lastT)lastT=t; const dt=Math.min((t-lastT)/1000,0.05); lastT=t;
+      life-=dt*0.95; vy+=110*dt;
+      el.style.top=(parseFloat(el.style.top)+vy*dt)+'px';
+      el.style.left=(parseFloat(el.style.left)+vxd*dt)+'px';
+      el.style.opacity=Math.max(0,Math.min(1,life*2.2)).toFixed(2);
+      if(life>0)requestAnimationFrame(anim); else el.remove();
+    })(performance.now());
+  });
+}
+
+// ── Main roll entry point ────────────────────────────────────────────────────
+async function startDiceRoll(rolls) {
+  // Always teardown old scene before starting a new roll
+  teardownPhysics();
+  await _loadLibs();
+  const T = _THREE, C = _CANNON;
+
+  // Get container AFTER DOM is updated
+  const container = document.getElementById('diceViewport');
+  if (!container) { console.error('diceViewport not found'); return; }
+
+  // Measure actual rendered size — the CSS sets both width & height on the stage
+  const W = container.offsetWidth  || 380;
+  const H = container.offsetHeight || 380;
+  container.style.position = 'relative';
+
+  const { scene, camera, renderer } = _buildScene(T, W, H);
+  container.appendChild(renderer.domElement);
+
+  const world = _buildWorld(C);
+
+  // HTML overlay for burst labels
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:2;';
+  container.appendChild(overlay);
+
+  // Build die objects
+  // Separate normal and winter dice for independent positioning
+  const normalRolls = rolls.filter(r => !r.isWinterDie);
+  const diceObjs = rolls.map((roll, i) => {
+    const isWinter = !!roll.isWinterDie;
+    const faceIds = isWinter ? [...DIE_WINTER] : [...(G.dice[i] || DIE_WINTER)];
+    const mesh = _buildDieMesh(T, faceIds, isWinter);
+    scene.add(mesh);
+
+    const body = new C.Body({
+      mass: 1,
+      shape: new C.Box(new C.Vec3(_DIE_UNIT/2, _DIE_UNIT/2, _DIE_UNIT/2)),
+      linearDamping: 0.28,
+      angularDamping: 0.35,
+    });
+
+    // Position: normal dice spread centrally; winter die placed separately at the back
+    // All constrained well within ±3 to stay on screen
+    let spawnX, spawnZ;
+    if (isWinter) {
+      spawnX = (Math.random() - 0.5) * 1.0;
+      spawnZ = -1.0 + (Math.random() - 0.5) * 0.4;
+    } else {
+      const ni = normalRolls.indexOf(roll);
+      const nc = normalRolls.length;
+      const spread = Math.min(2.2, nc * 0.85); // max spread ±1.1, well inside ±3.3 walls
+      spawnX = nc > 1 ? (ni/(nc-1) - 0.5) * spread + (Math.random()-0.5)*0.15 : (Math.random()-0.5)*0.6;
+      spawnZ = 0.6 + (Math.random() - 0.5) * 0.6;
+    }
+    body.position.set(spawnX, 6 + i * 0.8 + Math.random()*0.3, spawnZ);
+
+    const eq = new C.Quaternion();
+    eq.setFromEuler(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2);
+    body.quaternion.copy(eq);
+
+    // Moderate velocity — enough tumble without flying into walls
+    body.velocity.set((Math.random()-0.5)*2.0, -0.5-Math.random()*0.8, (Math.random()-0.5)*2.0);
+    body.angularVelocity.set((Math.random()-0.5)*14, (Math.random()-0.5)*14, (Math.random()-0.5)*14);
+
+    world.addBody(body);
+    return { mesh, body, roll, faceIds, isWinter, settled: false, frames: 0, burstDone: false };
+  });
+
+  // SETTLE thresholds — use a running low-water mark so a rocking die
+  // that briefly dips below threshold still accumulates progress
+  const SETTLE_V = 0.09, SETTLE_AV = 0.07, SETTLE_FRAMES = 35;
+  // Hard timeout: after 3s force-settle any stuck dice and resolve the roll.
+  // After 5s (shouldn't happen) do a full automatic re-roll.
+  const FORCE_SETTLE_MS = 3000;
+  const AUTO_REROLL_MS = 5000;
+  const rollStart = performance.now();
+  let allSettled = false, postTimer = 0, lastTs = null, rafId = null;
+  let timeoutTriggered = false;
+
+  _ds = { renderer, scene, camera, world, diceObjs, overlay, rafId: null };
+
+  function toScreen(pos) {
+    const v = new T.Vector3(pos.x, pos.y, pos.z).project(camera);
+    return { x: (v.x*0.5+0.5)*W, y: (-v.y*0.5+0.5)*H };
+  }
+
+  function forceSettleAll() {
+    // Slam all velocities to zero and mark settled — used by hard timeout
+    diceObjs.forEach(obj => {
+      if (!obj.settled) {
+        obj.body.velocity.set(0, 0, 0);
+        obj.body.angularVelocity.set(0, 0, 0);
+        obj.body.type = C.Body.STATIC;
+        obj.settled = true;
+      }
+    });
+    allSettled = true;
+  }
+
+  function finishRoll() {
+    diceObjs.forEach((obj, i) => {
+      const q = new T.Quaternion(obj.body.quaternion.x, obj.body.quaternion.y, obj.body.quaternion.z, obj.body.quaternion.w);
+      const topIdx = _getTopFace(T, q);
+      if (!obj.isWinter) {
+        G._pendingRolls[i].idx = topIdx;
+        G._pendingRolls[i].face = F[obj.faceIds[topIdx]];
+      } else {
+        const wi = rolls.findIndex(r => r.isWinterDie);
+        if (wi >= 0) { G._pendingRolls[wi].idx = topIdx; G._pendingRolls[wi].face = F[DIE_WINTER[topIdx]]; }
+      }
+    });
+    _ds.rafId = null;
+    _ds.world = null;
+    G.rolling = false;
+    applyRollResults(G._pendingRolls);
+    G.lastRolls = G._pendingRolls;
+    G.phase = G.ad.extraRoll ? 'ROLL' : 'ACTION';
+    _renderUI();
+  }
+
+  function frame(ts) {
+    if (!_ds || _ds.renderer !== renderer) return;
+
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min((ts-lastTs)/1000, 0.05);
+    lastTs = ts;
+    const elapsed = ts - rollStart;
+
+    // ── Hard timeout: 3s — force all dice flat and resolve ──
+    if (!timeoutTriggered && elapsed > FORCE_SETTLE_MS) {
+      timeoutTriggered = true;
+      forceSettleAll();
+      // Render one more frame so player can see final positions, then finish
+      world.step(1/60, dt, 3);
+      diceObjs.forEach(obj => { obj.mesh.position.copy(obj.body.position); obj.mesh.quaternion.copy(obj.body.quaternion); });
+      renderer.render(scene, camera);
+      finishRoll();
+      return;
+    }
+
+    // ── Safety re-roll at 5s (should never trigger after the above) ──
+    if (elapsed > AUTO_REROLL_MS) {
+      G.rolling = true;
+      teardownPhysics();
+      requestAnimationFrame(() => startDiceRoll(G._pendingRolls));
+      return;
+    }
+
+    world.step(1/60, dt, 3);
+
+    let everythingSettled = true;
+    diceObjs.forEach(obj => {
+      obj.mesh.position.copy(obj.body.position);
+      obj.mesh.quaternion.copy(obj.body.quaternion);
+
+      if (!obj.settled) {
+        const spd = obj.body.velocity.length();
+        const asp = obj.body.angularVelocity.length();
+        if (spd < SETTLE_V && asp < SETTLE_AV) {
+          if (++obj.frames >= SETTLE_FRAMES) {
+            obj.settled = true;
+            obj.body.type = C.Body.STATIC;
+          }
+        } else {
+          obj.frames = Math.max(0, obj.frames - 1); // decay rather than reset — helps rocking dice
+        }
+      }
+      if (!obj.settled) everythingSettled = false;
+
+      if (obj.settled && !obj.burstDone) {
+        obj.burstDone = true;
+        const sp = toScreen(obj.body.position);
+        _spawnBurst(overlay, sp.x, sp.y-25, obj.roll.face, W, H);
+      }
+    });
+
+    renderer.render(scene, camera);
+
+    if (everythingSettled && !allSettled) allSettled = true;
+    if (allSettled) postTimer += dt;
+
+    if (allSettled && postTimer > 1.2) {
+      finishRoll();
+      return;
+    }
+
+    rafId = requestAnimationFrame(frame);
+    _ds.rafId = rafId;
+  }
+
+  rafId = requestAnimationFrame(frame);
+  _ds.rafId = rafId;
+}
+
+// ── Reattach 3D scene after HTML rebuild ─────────────────────────────────────
+// Called after innerHTML rebuild to re-mount the persistent renderer canvas
+function _reattachScene() {
+  if (!_ds || !_ds.renderer) return;
+  const vp = document.getElementById('diceViewport');
+  if (!vp) return;
+  vp.style.position = 'relative';
+  // Re-add renderer canvas if not already there
+  if (!vp.contains(_ds.renderer.domElement)) {
+    vp.appendChild(_ds.renderer.domElement);
+  }
+  // Re-add overlay if not already there
+  if (_ds.overlay && !vp.contains(_ds.overlay)) {
+    vp.appendChild(_ds.overlay);
+  }
+  // Do one render to show current state
+  if (_ds.scene && _ds.camera) {
+    _ds.renderer.render(_ds.scene, _ds.camera);
+  }
+}
+
+// ── render() — rebuilds UI HTML without destroying 3D scene ─────────────────
+function render() {
+  if (_ds && _ds.rafId) { cancelAnimationFrame(_ds.rafId); _ds.rafId = null; }
+  document.getElementById('app').innerHTML = buildHTML();
+  bindEvents();
+  if (G?.rolling) {
+    requestAnimationFrame(() => startDiceRoll(G._pendingRolls));
+  } else if (_ds) {
+    _reattachScene();
+  } else if (G) {
+    requestAnimationFrame(() => _showEmpty());
+  }
+}
+
+function _renderUI() {
+  if (_ds && _ds.rafId) { cancelAnimationFrame(_ds.rafId); _ds.rafId = null; }
+  document.getElementById('app').innerHTML = buildHTML();
+  bindEvents();
+  _reattachScene();
+}
+
+function _syncLayout(){} // no-op — layout is fully CSS-driven
+
+// ── Placeholder for first view ────────────────────────────────────────────────
+function _showEmpty() {
+  const vp = document.getElementById('diceViewport');
+  if (!vp) return;
+  const W = vp.offsetWidth||380, H = vp.offsetHeight||380;
+  const cv = document.createElement('canvas');
+  cv.style.cssText = 'width:100%;height:100%;display:block;';
+  cv.width = W; cv.height = H;
+  vp.appendChild(cv);
+  const ctx = cv.getContext('2d');
+
+  ctx.fillStyle = '#1a6b3a'; ctx.fillRect(0, 0, W, H);
+  const vg = ctx.createRadialGradient(W/2,H/2,H*0.1,W/2,H/2,H*0.85);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.4)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(8,40,20,0.55)'; ctx.lineWidth=1;
+  for(let y=0;y<H;y+=12){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  for(let x=0;x<W;x+=12){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+
+  ctx.font = 'bold 13px Cinzel, serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(200,160,60,.5)';
+  ctx.fillText('Click here or Roll the Dice to begin', W/2, H/2);
+}
+
+
+
+function buildHTML(){
+  if(!G)return buildDiffScreen();
+  return `
+${buildTopBar()}
+<div class="main-area">
+  ${buildLeftPanel()}
+  ${buildCentrePanel()}
+  ${buildRightPanel()}
+</div>
+${buildActionBar()}
+${G.phase==='CARD'?buildCardModal():''}
+${G.modal==='forge'?buildForgeModal():''}
+${G.modal==='forge_face'?buildFaceModal():''}
+${G.modal==='deeds'?buildDeedsModal():''}
+${G.modal==='removePerm'?buildRemovePermModal():''}
+${G.modal==='faceswap'?buildFaceSwapModal():''}
+${G.modal==='visitor'?buildVisitorModal():''}
+${G.phase==='GAME_OVER'?buildGameOver():''}
+${S.showSettings?buildSettingsPanel():''}`;
+}
+
+function buildTopBar(){
+  const pips=Array.from({length:Math.min(G.season+3,20)},(_,i)=>{
+    const s=i+1;
+    const cls=s<G.season?'done':s===G.season?'active':'';
+    return `<div class="s-pip ${cls}" title="Season ${s}: ${sName(s)}">${s<G.season?'✓':sIcon(s)}</div>`;
+  }).join('');
+  const phaseStr=G.phase==='CARD'?'Draw card':G.phase==='ROLL'?'Roll dice':G.phase==='ACTION'?'Take action':'';
+  return `<div class="top-bar">
+    <div class="top-bar-title">⚔️ Kingdom Dice Forge</div>
+    <div class="top-bar-season">${sIcon(G.season)} ${sName(G.season)} · S${G.season}</div>
+    <div class="top-bar-track">${pips}</div>
+    <div class="top-bar-status">${phaseStr} · <strong>${G.diff.name}</strong></div>
+    <button class="settings-btn" id="btnOpenSettings">⚙️ Settings</button>
+  </div>`;
+}
+
+function buildLeftPanel(){
+  const r=G.resources,prod=calcProd();
+  const rank=getRank(G.glory),nxt=RANKS.find(t=>t.min>G.glory);
+  const rpct=nxt?Math.min(100,((G.glory-rank.min)/(nxt.min-rank.min))*100):100;
+  const t=G.diff.target,gap=t-G.glory;
+  const pc=permCount(),dth=G.DEATH_THRESHOLD;
+  const pcCls=pc>=6?'danger':pc>=3?'warn':'';
+
+  return `<div class="left-panel">
+    <div class="lp-section">
+      <div class="lp-title">Resources</div>
+      <div class="res-row"><span class="res-icon">🌾</span><span class="res-val">${r.grain||0}</span><span class="res-label">Grain</span>${prod.grain>0?`<span class="res-prod">+${prod.grain}/s</span>`:''}</div>
+      <div class="res-row"><span class="res-icon">💰</span><span class="res-val">${r.gold||0}</span><span class="res-label">Gold</span>${prod.gold>0?`<span class="res-prod">+${prod.gold}/s</span>`:''}</div>
+      <div class="res-row"><span class="res-icon">⚒️</span><span class="res-val">${r.hammer||0}</span><span class="res-label">Hammers</span>${prod.hammer>0?`<span class="res-prod">+${prod.hammer}/s</span>`:''}</div>
+    </div>
+    <div class="lp-section">
+      <div class="lp-title">Prestige</div>
+      <div class="glory-num">⚜️ ${G.glory}</div>
+      <div class="glory-label">PRESTIGE</div>
+      <div class="rank-name">${rank.t}</div>
+      ${nxt?`<div class="rank-next">${nxt.min-G.glory} until ${nxt.t}</div>`:'<div class="rank-next">Max Rank!</div>'}
+      <div class="prog-track"><div class="prog-fill" style="width:${rpct}%"></div></div>
+      <div class="target-row">
+        <span class="target-lbl">Target ${G.diff.name}</span>
+        <span class="target-val">${gap>0?gap+' to go':'✓ Done!'} / ⚜️${t}</span>
+      </div>
+      ${pc>0?`<div class="curse-chip ${pcCls}">☠️ ${pc}/${dth} permanent curses</div>`:''}
+    </div>
+    <div class="lp-section" style="flex:1;overflow-y:auto;">
+      <div class="lp-title">Quick Ref</div>
+      <div style="font-size:.65em;color:var(--text-faint);line-height:1.7;">
+        <div>🌾 Grain — decrees &amp; trade</div>
+        <div>💰 Gold — buildings &amp; specials</div>
+        <div>⚒️ Hammers — spent at Forge</div>
+        <div>⚜️ Prestige — your score</div>
+        <div style="margin-top:5px;color:var(--red)">☀️🗡️💀🔥🧿🌊 Curse faces</div>
+        <div style="color:var(--red)">⚒️ Hammer to forge away</div>
+        <div style="margin-top:5px;color:var(--perm-red)">⛔ Perm curse — needs Shrine</div>
+        <div style="color:var(--perm-red)">💀 All-cursed die = defeat</div>
+        <div style="margin-top:5px;color:#5090d0">❄️ Winter Die — mostly bad</div>
+        <div style="color:#ffa040">⚖️ Loaded die — forged to break</div>
+        <div style="color:var(--text-faint)">🫥 Frozen — end season only</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildCentrePanel(){
+  const rolling=G.rolling;
+  const canRoll=G.phase==='ROLL'&&!rolling&&!G.ad.diceFrozen;
+  const winter=isWinter(G.season);
+  const stageLabel=G.ad.diceFrozen?'🫥 Dice Frozen'
+    :rolling?'🎲 Rolling…'
+    :G.lastRolls?'🎲 Results shown · click to re-roll next season'
+    :canRoll?`🎲 Click here or press Roll Dice below${winter?' · ❄️ Winter Die active':''}`
+    :'🎲 Dice Stage';
+
+  const notices=[];
+  if(G.loadedDice.length>0) notices.push(`<div class="stage-notice-line loaded">⚖️ Die ${G.loadedDice.map(i=>i+1).join(',')} loaded — weighted to curses</div>`);
+  if(winter) notices.push(`<div class="stage-notice-line winter">❄️ Winter Season — the Winter Die rolls too!</div>`);
+
+  const rollResult=G.lastRolls&&G.phase==='ACTION'&&!rolling?buildRollResult():'';
+  const negEvent=G.phase!=='CARD'&&G.negEvent?`<div class="consequence-box"><div class="ct">⚠️ Curse struck!</div><div class="cd">${G.negEvent}</div></div>`:'';
+
+  // Kingdom visual — top half
+  const builtBuildings=BUILDINGS.filter(b=>getBuildingTier(b.id)>0);
+  const kvHTML=builtBuildings.length
+    ? builtBuildings.map(b=>{
+        const tier=getBuildingTier(b.id);
+        const td=b.tiers[tier-1];
+        const prodStr=td.prod&&Object.keys(td.prod).length
+          ? Object.entries(td.prod).map(([k,v])=>`+${v}${k==='grain'?'🌾':k==='gold'?'💰':k==='hammer'?'⚒️':'⚜️'}`).join('') : '';
+        const imgSrc=`./images/buildings/${b.id}-${tier}.png`;
+        const fallbackEmoji=td.icon||b.icon;
+        return `<div class="kv-building tier${tier}" title="${td.name} · ${td.desc}">
+          <div class="kv-img-wrap">
+            <img class="kv-img" src="${imgSrc}" alt="${td.name}"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <span class="kv-emoji" style="display:none">${fallbackEmoji}</span>
+          </div>
+          <div class="kv-name">${b.name}</div>
+          <div class="kv-tier-name">${td.name}</div>
+          <div class="kv-tier">${'●'.repeat(tier)}${'○'.repeat(b.tiers.length-tier)}</div>
+          ${prodStr?`<div class="kv-prod">${prodStr}/s</div>`:''}
+        </div>`;
+      }).join('')
+    : `<div class="kv-empty">🏰 No buildings yet — open Kingdom Builder to construct your empire</div>`;
+
+  return `<div class="centre-panel">
+    <div class="dice-stage-wrap">
+      ${notices.length?`<div class="dice-stage-notice">${notices.join('')}</div>`:''}
+      <div id="diceViewport" class="dice-viewport"></div>
+      <div class="dice-stage-lbl ${rolling?'rolling':''}">${stageLabel}</div>
+    </div>
+    ${rollResult}
+    ${negEvent}
+    <div class="kingdom-visual">${kvHTML}</div>
+  </div>`;
+}
+
+function buildRightPanel(){
+  const pc=permCount();
+  const rolling=G.rolling;
+  const winter=isWinter(G.season);
+  const regNegCount=G.dice.flat().filter(fid=>F[fid].neg).length-pc;
+  const infCount=G.infections?G.infections.length:0;
+
+  const diceFlat=G.dice.map((die,di)=>{
+    const roll=G.lastRolls&&G.lastRolls[di]&&!G.lastRolls[di].isWinterDie?G.lastRolls[di]:null;
+    const isLoaded=G.loadedDice.includes(di);
+    const rolledBadge=roll?`<span class="die-rolled-badge">${roll.face.sym} rolled</span>`:'';
+    const loadBadge=isLoaded?`<span style="font-size:.65em;color:#ffa040">⚖️ Loaded</span>`:'';
+    const facesHTML=die.map((fid,fi)=>{
+      const face=F[fid],isP=isPerm(di,fi),isRolled=roll&&roll.idx===fi;
+      const isInf=isInfected(di,fi),isLeg=face.legendary;
+      let cls='die-cube';
+      if(isInf)cls+=' is-infected';
+      else if(isP)cls+=' is-perm';
+      else if(face.neg)cls+=' is-neg';
+      if(isRolled)cls+=' is-rolled';
+      if(isLoaded)cls+=' is-loaded';
+      if(isLeg)cls+=' is-legendary';
+      const legStyle=isLeg?` style="--leg-glow:${face.legendaryGlow||'#f5c842'}"`:''
+      const lbl=isRolled?`▲ ${face.label}`:isP?`⛔ ${face.label}`:isInf?'🦠 Infected':face.label;
+      return `<div class="${cls}"${legStyle}><span class="sym">${face.sym}</span><span class="lbl">${lbl}</span></div>`;
+    }).join('');
+    return `<div class="die-block">
+      <div class="die-block-lbl">Die ${di+1}${rolledBadge}${loadBadge}</div>
+      <div class="die-faces-grid">${facesHTML}</div>
+    </div>`;
+  }).join('');
+
+  const winterBlock=winter?`<div class="die-block">
+    <div class="die-block-lbl" style="color:#5090d0">❄️ Winter Die</div>
+    <div class="die-faces-grid">${DIE_WINTER.map((fid,fi)=>{
+      const face=F[fid];
+      const isRolled=G.lastRolls&&G.lastRolls[G.dice.length]&&G.lastRolls[G.dice.length].idx===fi&&G.lastRolls[G.dice.length].isWinterDie;
+      let cls='die-cube is-winter';if(isRolled)cls+=' is-rolled';
+      return `<div class="${cls}"><span class="sym">${face.sym}</span><span class="lbl">${face.label}</span></div>`;
+    }).join('')}</div>
+  </div>`:'';
+
+  const deathWarn=pc>=6?`<div class="death-warning">💀 ${pc}/${G.DEATH_THRESHOLD} perm curses — imminent defeat!</div>`
+    :pc>=3?`<div class="perm-warning">⛔ ${pc} perm curse${pc>1?'s':''} — build Purification Shrine!</div>`
+    :pc>=1?`<div class="perm-warning">🔒 ${pc} permanent curse${pc>1?'s':''}</div>`:'';
+  const negWarn=regNegCount>0&&pc<3?`<div class="neg-warning">⚒️ ${regNegCount} curse${regNegCount>1?'s':''} — Forge to remove!</div>`:'';
+  const infWarn=infCount>0?`<div class="neg-warning" style="border-color:#22c55e;color:#40d060">🦠 ${infCount} infected face${infCount>1?'s':''} — will spread if rolled!</div>`:'';
+
+  return `<div class="right-panel">
+    <div class="rp-header">Your Dice — All Faces</div>
+    ${deathWarn||negWarn||infWarn?`<div class="warn-strip">${deathWarn}${negWarn}${infWarn}</div>`:''}
+    <div class="dice-scroll">${diceFlat}${winterBlock}</div>
+    <div class="game-log">${G.log.slice(0,30).map(e=>`<div class="log-entry ${lc(e)}">${lm(e)}</div>`).join('')}</div>
+  </div>`;
+}
+
+function buildActionBar(){
+  const ph=G.phase,ad=G.ad,rolling=G.rolling,frozen=ad.diceFrozen;
+  const forgeOk=ph==='ACTION'&&ad.fr>0&&!ad.skipForge;
+  const deedOk=ph==='ACTION'&&!ad.deedDone;
+  const dieOk=ph==='ACTION'&&!ad.dieBought&&G.dice.length<4;
+  const nextDie=dieOk?EXTRA_DICE[G.dice.length-2]:null;
+  let content='';
+
+  if(ph==='ROLL'){
+    const hint=frozen?'🫥 Dice frozen — End Season to continue':rolling?'Rolling…':
+      `Roll dice to collect resources${G.ad.extraRoll?' · Extra roll available!':''} · <kbd>Space</kbd> to roll`;
+    content=`<span class="bar-phase">Roll Phase</span>
+      <span class="bar-hint">${hint}</span>
+      <button class="btn btn-roll" id="btnRoll" ${rolling||frozen?'disabled':''}>${rolling?'⏳ Rolling…':frozen?'🫥 Frozen':'🎲 Roll the Dice!'}</button>
+      ${!rolling&&!frozen?`<button class="btn btn-end" id="btnEnd" style="opacity:.55" title="Skip rolling this season and go straight to actions">Skip Season</button>`:''}`;
+  } else if(ph==='ACTION'){
+    const forgeLabel=ad.fr<=0?'✓ Forged':ad.skipForge?'🚫 Forge Blocked':
+      `⚒️ Forge${ad.frMax>1?` (${ad.fr} left)`:''}${ad.freeForge&&ad.fr>0?' ✨ FREE':''}`;
+    const forgeTitle=ad.skipForge?'The Forge is blocked this season by a dark curse':
+      ad.fr<=0?'Already forged this season':'Replace a curse face — costs Hammers';
+    const prod=calcProd(),prodTotal=Object.values(prod).reduce((a,b)=>a+b,0);
+    const prodStr=prodTotal>0?[prod.grain>0?`🌾+${prod.grain}`:'',prod.gold>0?`💰+${prod.gold}`:'',prod.hammer>0?`⚒️+${prod.hammer}`:'',prod.glory>0?`⚜️+${prod.glory}`:''].filter(Boolean).join(' '):'';
+    content=`<span class="bar-phase">Action Phase</span>
+      ${prodStr?`<span class="bar-prod" title="Earned at end of season from buildings">📦 ${prodStr}/season</span><div class="bar-sep"></div>`:''}
+      <button class="btn btn-forge ${ad.fr<=0||ad.skipForge?'done':''}" id="btnForge" ${!forgeOk?'disabled':''} title="${forgeTitle}">${forgeLabel}</button>
+      <button class="btn btn-deed ${ad.deedDone?'done':''}" id="btnDeed" ${!deedOk?'disabled':''} title="${ad.deedDone?'Already built this season':'Construct or upgrade a building'}">${ad.deedDone?'✓ Built':'🏰 Kingdom Builder'}</button>
+      ${dieOk&&nextDie?`<button class="btn btn-die" id="btnBuyDie" title="${nextDie.desc}">🎲 ${nextDie.label}</button>`:''}
+      <span class="bar-hint" style="flex:1">Forge to improve dice · Build for passive income</span>
+      <button class="btn btn-end" id="btnEnd" title="End this season and advance to the next">End Season →</button>`;
+  } else {
+    content=`<span class="bar-hint" style="opacity:.5">Waiting…</span>`;
+  }
+  return `<div class="action-bar">${content}</div>`;
+}
+
+
+
+function buildSettingsPanel(){
+  const themes=[
+    {id:'tavern',name:'🍺 Dark Tavern',sub:'Default dark'},
+    {id:'parchment',name:'📜 Parchment',sub:'Light & warm'},
+    {id:'royal',name:'👑 Royal Blue',sub:'Dark & regal'},
+    {id:'forest',name:'🌿 Forest',sub:'Dark & natural'},
+  ];
+  const thBtns=themes.map(t=>`<button class="theme-btn ${S.theme===t.id?'active':''}" data-theme="${t.id}"><strong>${t.name}</strong><br><small>${t.sub}</small></button>`).join('');
+  const tcHex=S.textColor||'';
+  return `<div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <div class="sp-title">⚙️ Settings</div>
+      <div class="sp-section">
+        <div class="sp-lbl">Colour Theme</div>
+        <div class="theme-grid">${thBtns}</div>
+      </div>
+      <div class="sp-section">
+        <div class="sp-lbl">Text Size</div>
+        <div class="sp-slider-row">
+          <label>Font size</label>
+          <input type="range" id="fontSlider" min="14" max="22" step="1" value="${S.fontSize}">
+          <span id="fontSizeVal">${S.fontSize}px</span>
+        </div>
+        <div style="font-size:.8rem;color:var(--text-dim);font-style:italic">Minimum 14px for accessibility. Recommended 16–18px.</div>
+      </div>
+      <div class="sp-section">
+        <div class="sp-lbl">Text Colour</div>
+        <div class="sp-slider-row">
+          <label>Custom colour</label>
+          <input type="color" id="textColorInput" value="${tcHex||'#1a1004'}" style="width:36px;height:28px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:none;">
+          <button id="btnResetTextColor" style="font-size:.75rem;background:var(--bg-deep);border:1px solid var(--border);border-radius:4px;padding:4px 8px;cursor:pointer;color:var(--text-dim);">Reset</button>
+        </div>
+        <div style="font-size:.8rem;color:var(--text-dim);font-style:italic">Overrides theme text colour. Click Reset to use theme default.</div>
+      </div>
+      <button class="sp-close" id="btnCloseSettings">✓ Done</button>
+    </div>
+  </div>`;
+}
+
+function buildDiffScreen(){
+  const cards=DIFFS.map(d=>`<div class="diff-card" data-diff="${d.id}"><div class="d-name">${d.name}</div><div class="d-target">🎯 ⚜️${d.target}</div><div class="d-desc">${d.desc}</div></div>`).join('');
+  return `<div class="diff-screen"><div class="diff-box">
+    <div class="diff-title">⚔️ Kingdom Dice Forge</div>
+    <div class="diff-sub">Forge your legacy — season after season — until victory or ruin</div>
+    <div class="diff-grid">${cards}</div>
+    <div class="how-to"><h3>📖 How to Play</h3>
+      <p>🎲 <strong>Roll</strong> your dice each season. Click the dice area or the Roll button. Resources burst from the dice as they land!</p>
+      <p>⚒️ <strong>Forge</strong> — spend Hammers to replace die faces. Tier 1 costs just 1 Hammer. Remove curses or upgrade to power faces.</p>
+      <p>📜 <strong>Decree</strong> — build structures for prestige and passive income every season. Workshops generate Hammers passively!</p>
+      <p>🃏 <strong>Season Cards</strong> — drawn every season. Good cards bring windfalls; bad cards can <strong style="color:var(--perm-red)">permanently curse</strong> die faces!</p>
+      <p>⚖️ <strong>Loaded Curse</strong> — the Warlock can load a die against you, weighting it toward curses. Forge away all negative faces on that die to break the curse!</p>
+      <p>🫥 <strong>Paralysis</strong> — some curses freeze your dice for a turn. <strong>💀 If all 6 faces of any die become curses — instant defeat!</strong></p>
+      <p>☠️ <strong>Permanent Curses</strong> glow red and cannot be Forged away — only the <strong>Purification Rite</strong> decree removes them. Accumulate 8 and your kingdom falls.</p>
+      <p>❄️ <strong>Winter Die</strong> — each Winter season, an icy blue die joins your roll bringing mostly harsh events. Survive Winter to continue your reign!</p>
+      <p>⚙️ Use the <strong>Settings</strong> button to change colour theme, text size, and text colour.</p>
+    </div>
+  </div></div>`;
+}
+
+function buildCardModal(){
+  const card=G.pendingCard;if(!card)return'';
+  const isGood=card.t==='good';
+  const isVisitor=card.t==='visitor';
+  const eff=cardEffectText(card).split('\n').join('<br>');
+  return `<div class="sc-overlay"><div class="sc-box ${isGood||isVisitor?'good':'bad'}">
+    <div class="sc-s-lbl">${sIcon(G.season)} ${sName(G.season)} — Season ${G.season}</div>
+    <div class="sc-icon">${card.i}</div>
+    <div class="sc-name">${card.name}</div>
+    <div class="sc-desc">${card.desc}</div>
+    <div class="sc-effect">${eff}</div>
+    <button class="btn-dismiss" id="btnDismissCard">${isVisitor?'See What They Offer':isGood?'Accept the Blessing':'Accept Your Fate'}</button>
+  </div></div>`;
+}
+
+function buildRollResult(){
+  const rolls=G.lastRolls;if(!rolls)return'';
+  let grain=0,gold=0,hammer=0,glory=0;
+  rolls.forEach(r=>{grain+=r.face.grain;gold+=r.face.gold;hammer+=r.face.hammer;glory+=r.face.glory;});
+  const fc=rolls.map(r=>`<div class="rfc ${r.face.neg?'neg':''}">${r.face.sym} ${r.face.label}</div>`).join('');
+  const gains=[];
+  if(grain!==0)gains.push(`<div class="gc ${grain>0?'pos':'neg'}">🌾${grain>0?'+':''}${grain}</div>`);
+  if(gold!==0) gains.push(`<div class="gc ${gold>0?'pos':'neg'}">💰${gold>0?'+':''}${gold}</div>`);
+  if(hammer!==0)gains.push(`<div class="gc ${hammer>0?'pos':'neg'}">⚒️${hammer>0?'+':''}${hammer}</div>`);
+  if(glory!==0)gains.push(`<div class="gc ${glory>0?'pos':'neg'}">⚜️${glory>0?'+':''}${glory}</div>`);
+  return `<div class="roll-result"><div class="rlbl">── This Roll ──</div><div class="roll-faces">${fc}</div>${gains.length?`<div class="roll-gains">${gains.join('')}</div>`:''}</div>`;
+}
+
+function buildForgeModal(){
+  const dieSlot=G.dice.length<4;
+  let html='';
+  const adv=hasAdvWorkshop();
+  if(dieSlot){
+    const idx=G.dice.length-2,opt=EXTRA_DICE[idx];
+    if(opt){const ok=canAfford(G.resources,opt.cost);
+      const cHTML=Object.entries(opt.cost).map(([k,v])=>`<span class="cc ${(G.resources[k]||0)>=v?'ok':'no'}">${k==='hammer'?'⚒️':k==='grain'?'🌾':'💰'}${v}</span>`).join('');
+      html+=`<div class="tier-label" style="color:var(--blue)">Forge a New Die</div><div class="card-grid">
+      <div class="forge-card special-die ${ok?'can':''}" data-newdie="${idx}">
+        <div class="c-sym">🎲</div><div class="c-name">${opt.label}</div>
+        <div class="cost-row">${cHTML}</div>
+        <div class="afford" style="color:${ok?'var(--blue)':'var(--red)'}">${ok?'✓ Can forge':'✗ Need more'}</div>
+      </div></div>`;
+    }
+  }
+  const tc=['','#806010','#705010','#903010'];
+  let lastTier=0;
+  FORGE.forEach(u=>{
+    const locked=u.requiresAdv&&!adv;
+    if(u.tier!==lastTier){
+      if(lastTier)html+='</div>';
+      const tierLabel=u.tierName+(u.requiresAdv&&!adv?' 🔒':'');
+      html+=`<div class="tier-label" style="color:${locked?'#888':tc[u.tier]}">${tierLabel}</div>`;
+      if(locked)html+=`<div style="background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:6px;padding:6px 10px;font-size:.82em;color:var(--red);margin-bottom:6px">🔒 Build an <strong>Advanced Workshop</strong> in the Royal Decree Hall to unlock Rare forgings.</div>`;
+      html+=`<div class="card-grid">`;
+      lastTier=u.tier;
+    }
+    const face=F[u.faceId],free=G.ad.freeForge&&G.ad.fr>0,ok=!locked&&(free||canAfford(G.resources,u.cost));
+    const cHTML=Object.entries(u.cost).map(([k,v])=>`<span class="cc ${free||(G.resources[k]||0)>=v?'ok':'no'}">${k==='hammer'?'⚒️':k==='grain'?'🌾':'💰'}${v}</span>`).join('');
+    if(locked){
+      html+=`<div class="forge-card" style="opacity:.45;cursor:not-allowed"><div class="c-sym">🔒</div><div class="c-name">${face.label}</div><div class="cost-row">${cHTML}</div><div class="afford" style="color:#888">🔒 Locked</div></div>`;
+    } else {
+      html+=`<div class="forge-card ${ok?'can':''}" data-forge="${u.faceId}">
+        <div class="c-sym">${face.sym}</div><div class="c-name">${face.label}</div>
+        <div class="cost-row">${cHTML}${free?'<span style="color:var(--green);font-size:.8rem;margin-left:3px">FREE</span>':''}</div>
+        <div class="afford" style="color:${ok?'var(--green)':'var(--red)'}">${ok?'✓ Affordable':'✗ Need more'}</div>
+      </div>`;
+    }
+  });
+  html+='</div>';
+  if(!adv){html+=`<div style="margin-top:10px;font-size:.82em;color:var(--text-dim);font-style:italic">⭐ Legendary faces are offered only by visiting creatures — keep an eye on event cards!</div>`;}
+  return `<div class="overlay"><div class="modal">
+    <div class="modal-title">⚒️ The Royal Forge</div>
+    <div class="modal-sub">⚒️${G.resources.hammer} available${G.ad.freeForge?' · <strong style="color:var(--green)">Next forge FREE!</strong>':''} · Permanent ⛔ faces cannot be replaced here.</div>
+    <div class="modal-scroll">${html}</div>
+    <div class="modal-footer" style="text-align:right"><button class="btn-close" id="btnCloseForge">Leave the Forge</button></div>
+  </div></div>`;
+}
+
+function buildVisitorModal(){
+  const v=G.pendingVisitor;if(!v)return'';
+  const face=F[v.faceId];
+  const cHTML=Object.entries(v.cost).map(([k,val])=>`<span class="cc ${(G.resources[k]||0)>=val?'ok':'no'}">${k==='hammer'?'⚒️':k==='grain'?'🌾':'💰'}${val}</span>`).join(' ');
+  const canBuy=canAfford(G.resources,v.cost);
+  const glowCol=face.legendaryGlow||'#f5c842';
+  const statsLine=[face.grain?`🌾${face.grain>0?'+':''}${face.grain}`:'',face.gold?`💰${face.gold>0?'+':''}${face.gold}`:'',face.hammer?`⚒️${face.hammer>0?'+':''}${face.hammer}`:'',face.glory?`⚜️${face.glory>0?'+':''}${face.glory}`:''].filter(Boolean).join('  ');
+  return `<div class="overlay"><div class="modal" style="max-width:460px;text-align:center">
+    <div class="modal-title" style="color:${glowCol}">${v.icon} ${v.name} Visits!</div>
+    <div class="modal-scroll">
+      <div style="font-style:italic;color:var(--text-dim);margin-bottom:12px">"${v.desc}"</div>
+      <div style="background:linear-gradient(135deg,rgba(255,220,80,.12),rgba(200,140,255,.12));border:2px solid ${glowCol};border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 0 20px ${glowCol}44">
+        <div style="font-size:2.2em;filter:drop-shadow(0 0 10px ${glowCol})">${face.sym}</div>
+        <div style="font-weight:700;font-size:1.05em;color:${glowCol};margin-top:4px">${face.label}</div>
+        ${statsLine?`<div style="font-size:.85em;color:var(--text-dim);margin-top:4px">${statsLine}</div>`:''}
+        <div style="font-size:.75em;color:#a0a0a0;margin-top:4px;font-style:italic">✨ Legendary Face</div>
+      </div>
+      <div style="margin-bottom:4px;font-size:.88em;color:var(--text-dim)">Cost to install on a die face:</div>
+      <div style="margin-bottom:4px">${cHTML}</div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-action" id="btnVisitorAccept" ${canBuy?'':'disabled'} style="${canBuy?`background:${glowCol};border-color:${glowCol};color:#1a1004;`:''}">✨ Accept${!canBuy?' (need more resources)':''}</button>
+      <button class="btn-close" id="btnVisitorDecline">Decline</button>
+    </div>
+  </div></div>`;
+}
+
+function buildFaceModal(){
+  const u=G.pendingUpgrade,face=F[u.faceId];
+  const isLeg=u.isLegendary;
+  const dHTML=G.dice.map((die,di)=>`<div class="die-group"><div class="die-group-lbl">Die ${di+1}:</div>
+    <div class="die-faces">${die.map((fid,fi)=>{
+      const ff=F[fid],isP=isPerm(di,fi),isInf=isInfected(di,fi);
+      const isLegFace=ff.legendary;
+      const isBlocked=isP&&!isLeg;
+      const extraStyle=isLegFace?` style="border-color:${ff.legendaryGlow||'#f5c842'};box-shadow:0 0 10px ${ff.legendaryGlow||'#f5c842'}"`:isInf?' style="border-color:#22c55e;background:#dcfce7"':isP&&isLeg?' style="border-color:#f5c842;box-shadow:0 0 8px rgba(245,200,66,.6);background:#fff8e0"':'';
+      const titleText=isBlocked?'🔒 Permanent curse — only a Purification Shrine or Legendary face can remove this':isP&&isLeg?'⭐ Legendary power can replace this permanent curse!':'Click to replace: '+ff.label;
+      const labelText=isBlocked?'🔒 Perm':isP&&isLeg?'⭐ Smash!':isInf?'🦠 Infected':isLegFace?'⭐ '+ff.label:ff.neg?'⚒️ Replace':ff.label;
+      return `<div class="face-btn ${isBlocked?'is-perm':''}${ff.neg&&!isP&&!isInf?' is-neg':''}" data-die="${di}" data-face="${fi}"${extraStyle} title="${titleText}">
+        ${ff.sym}<span class="tiny">${labelText}</span>
+      </div>`;
+    }).join('')}</div>
+  </div>`).join('');
+  const permNote=isLeg
+    ?`<span style="color:#d4a030;font-weight:700">⭐ Legendary power can replace permanent curses!</span>`
+    :`<span style="color:var(--green)">⚒️ Click any regular curse face to replace it. <span style="color:var(--perm-red)">🔒 Permanent faces require a Purification Shrine.</span></span>`;
+  return `<div class="overlay"><div class="modal">
+    <div class="modal-title">Select Face to Replace</div>
+    <div class="modal-sub">Installing: ${face.sym} ${face.label}${face.legendary?' ⭐ Legendary':''} · ${permNote}</div>
+    <div class="modal-scroll">${dHTML}</div>
+    <div class="modal-footer"><button class="btn-back" id="btnBackForge">← Back</button><button class="btn-close" id="btnCloseForge2">Cancel</button></div>
+  </div></div>`;
+}
+
+function buildFaceSwapModal(){
+  const sel=G.pendingFaceSwap;
+  const dHTML=G.dice.map((die,di)=>`<div class="die-group"><div class="die-group-lbl">Die ${di+1}${G.loadedDice&&G.loadedDice.includes(di)?' ⚖️ Loaded':''}:</div>
+    <div class="die-faces">${die.map((fid,fi)=>{
+      const ff=F[fid],isP=isPerm(di,fi);
+      const isSel=sel&&sel.di===di&&sel.fi===fi;
+      return `<div class="face-btn ${isP?'is-perm':''}${ff.neg&&!isP?' is-neg':''}" data-die="${di}" data-face="${fi}"
+        style="${isSel?'border-color:#f5c842;box-shadow:0 0 10px #f5c842;':''}"
+        title="${isP?'Permanent — cannot swap':'Click to select: '+ff.label}">
+        ${ff.sym}<span class="tiny">${isP?'⛔PERM':ff.label}</span>
+      </div>`;
+    }).join('')}</div>
+  </div>`).join('');
+  const instrMsg=!sel?'Step 1: Click a face on any die to select it':'Step 2: Click another face to swap with the selected one';
+  return `<div class="overlay"><div class="modal" style="max-width:620px">
+    <div class="modal-title">🃏 Trickster's Face Swap</div>
+    <div class="modal-sub" style="color:var(--gold-bright)">${instrMsg}${sel?` — Selected: Die ${sel.di+1} ${F[G.dice[sel.di][sel.fi]].sym}`:''}</div>
+    <div class="modal-scroll">
+      <div style="font-size:.85rem;color:var(--text-dim);margin-bottom:12px;font-style:italic">⛔ Permanent curse faces cannot be swapped. You may swap faces within the same die.</div>
+      ${dHTML}
+    </div>
+    <div class="modal-footer" style="text-align:center"><button class="btn-close" id="btnCloseFaceSwap">Cancel Swap</button></div>
+  </div></div>`;
+}
+
+function buildDeedsModal(){
+  const res=G.resources;
+  const costFmt=(cost)=>Object.entries(cost).map(([k,v])=>{
+    const ok=(res[k]||0)>=v;
+    const sym=k==='grain'?'🌾':k==='gold'?'💰':k==='hammer'?'⚒️':'?';
+    return `<span class="cc ${ok?'ok':'no'}">${sym}${v}</span>`;
+  }).join('');
+
+  const trackColors={food:'#60a020',industry:'#8090a0',prestige:'#a060e0',grand:'#c04040'};
+  let html='';
+
+  BUILDING_TRACKS.forEach(track=>{
+    const buildings=BUILDINGS.filter(b=>b.track===track.id);
+    const col=trackColors[track.id]||'var(--gold-bright)';
+    html+=`<div class="tier-label" style="color:${col}">${track.label}</div>`;
+    html+=`<div class="card-grid bld-grid">`;
+
+    buildings.forEach((b,bi)=>{
+      const curTier=getBuildingTier(b.id);
+      const nextT=getNextTier(b);
+      const unlocked=isBuildingUnlocked(b);
+      const maxed=curTier>=b.tiers.length;
+      const canBuy=unlocked&&nextT&&canAfford(res,nextT.cost)&&!G.ad.deedDone;
+      const clickable=canBuy?`data-bldid="${b.id}"`:'';
+
+      // Tier pips
+      const pips=b.tiers.map((t,i)=>`<span class="tier-pip ${i<curTier?'done':i===curTier?'next':''}">${i<curTier?'●':'○'}</span>`).join('');
+
+      // Status line
+      let status='';
+      if(!unlocked) status=`<div class="bld-locked">🔒 ${b.requiresDesc}</div>`;
+      else if(maxed) status=`<div class="bld-maxed">⭐ Max</div>`;
+      else if(curTier>0){
+        const cp=b.tiers[curTier-1].prod||{};
+        const ps=Object.entries(cp).map(([k,v])=>`+${v}${k==='grain'?'🌾':k==='gold'?'💰':k==='hammer'?'⚒️':'⚜️'}`).join(' ');
+        status=`<div class="bld-current">T${curTier}: ${b.tiers[curTier-1].name}${ps?` · ${ps}`:''}</div>`;
+      }
+
+      // Next tier block
+      let next='';
+      if(nextT&&unlocked){
+        const prod=nextT.prod&&Object.keys(nextT.prod).length
+          ?Object.entries(nextT.prod).map(([k,v])=>`+${v}${k==='grain'?'🌾':k==='gold'?'💰':k==='hammer'?'⚒️':'⚜️'}`).join(' '):'';
+        next=`<div class="bld-next">
+          <div class="bld-up-header">
+            <span class="bld-tier-num">T${curTier+1}</span>
+            <span class="bld-tier-name">${nextT.icon||b.icon} ${nextT.name}</span>
+            ${nextT.special?`<span class="bld-special">✨</span>`:''}
+          </div>
+          <div class="bld-tier-effect">${nextT.desc}</div>
+          <div class="${prod?'bld-tier-prod':'bld-tier-glory'}">${prod?`${prod}/s · `:''}⚜️+${nextT.glory}</div>
+          <div class="cost-row">${costFmt(nextT.cost)}</div>
+          <div class="${canBuy?'bld-cta':'bld-cant'}">${canBuy?'Click to build →':'Not enough resources'}</div>
+        </div>`;
+      }
+
+      // Connector arrow between buildings in same track
+      const arrow=bi<buildings.length-1?`<div class="bld-track-arrow">→</div>`:'';
+
+      html+=`<div class="bld-card ${curTier>0?'built':''} ${!unlocked?'locked':''} ${canBuy?'buyable':''}" ${clickable} title="${b.desc}">
+        <div class="bld-card-top">
+          <span class="bld-icon">${b.tiers[Math.max(0,curTier-1)]?.icon||b.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div class="bld-name">${b.name}</div>
+            <div class="bld-pips">${pips}</div>
+          </div>
+        </div>
+        <div class="bld-desc-line">${b.desc}</div>
+        ${status}
+        ${next}
+      </div>${arrow}`;
+    });
+
+    html+=`</div>`;
+  });
+
+  return `<div class="overlay"><div class="modal modal-wide">
+    <div class="modal-title">🏰 Kingdom Builder</div>
+    <div class="modal-sub">🌾${res.grain} · 💰${res.gold} · ⚒️${res.hammer}${G.ad.deedDone?' · <span style="color:var(--text-faint)">Already built this season</span>':''}</div>
+    <div class="modal-scroll">${html}</div>
+    <div class="modal-footer" style="text-align:right"><button class="btn-close" id="btnCloseDeeds">Leave the Hall</button></div>
+  </div></div>`;
+}
+function buildRemovePermModal(){
+  if(!G.permanentCurses.length){
+    return `<div class="overlay"><div class="modal" style="max-width:480px;text-align:center">
+      <div class="modal-title">✨ Purification Rite</div>
+      <div class="modal-sub">There are no permanent curses to remove!</div>
+      <button class="btn-close" id="btnCloseRemPerm">Close</button>
+    </div></div>`;
+  }
+  const buttons=G.permanentCurses.map((p,i)=>{
+    const fid=G.dice[p.die][p.face],face=F[fid];
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+      <button class="perm-face-btn" data-permidx="${i}">${face.sym}<span class="tiny">${face.label}</span></button>
+      <div style="font-size:.75rem;color:var(--text-faint)">Die ${p.die+1}, Face ${p.face+1}</div>
+    </div>`;
+  }).join('');
+  return `<div class="overlay"><div class="modal" style="max-width:580px">
+    <div class="modal-title">✨ Purification Rite</div>
+    <div class="modal-sub" style="color:var(--perm-red)">Select a permanent curse to cleanse from your dice</div>
+    <div class="modal-scroll"><div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;padding:18px 0">${buttons}</div></div>
+    <div class="modal-footer" style="text-align:center"><button class="btn-close" id="btnCloseRemPerm">Cancel</button></div>
+  </div></div>`;
+}
+
+function buildGameOver(){
+  const won=G.wonGame,rank=getRank(G.glory);
+  return `<div class="game-over"><div class="game-over-box ${won?'win':'lose'}">
+    <div class="go-crown">${won?'👑':'💀'}</div>
+    <div class="go-result">${won?'Victory!':'The Kingdom Falls'}</div>
+    <div class="go-sub">${won?'Your reign shall be remembered forever!':G.deathReason||'The realm has fallen.'}</div>
+    <div class="go-score">⚜️ ${G.glory}</div>
+    <div class="go-rank">${rank.t}</div>
+    <div class="go-detail">${won?`Surpassed the ${G.diff.name} target of ⚜️${G.diff.target} in Season ${G.season}!`:`Fell short of ⚜️${G.diff.target} by ${Math.max(0,G.diff.target-G.glory)} Prestige.`}</div>
+    <button class="btn-restart" id="btnRestart">⚔️ Begin a New Reign</button>
+  </div></div>`;
+}
+
+// ═══════════════════════════
+//  EVENTS
+// ═══════════════════════════
+function bindEvents(){
+  const on=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',fn);};
+  const onAll=(sel,fn)=>document.querySelectorAll(sel).forEach(el=>el.addEventListener('click',fn));
+  onAll('[data-diff]',e=>{G=initGame(e.currentTarget.dataset.diff);render();});
+  on('btnRoll',doRoll);
+  // Canvas click to roll
+  const vp=document.getElementById('diceViewport');
+  if(vp)vp.addEventListener('click',()=>{
+    if(G&&G.phase==='ROLL'&&!G.rolling&&!G.ad.diceFrozen)doRoll();
+  });
+  on('btnForge',()=>{G.modal='forge';render();});
+  on('btnDeed',()=>{G.modal='deeds';render();});
+  on('btnBuyDie',doBuyDie);
+  on('btnEnd',doEndSeason);
+  on('btnDismissCard',doDismissCard);
+  on('btnCloseForge',()=>{G.modal=null;render();});
+  on('btnCloseForge2',()=>{G.modal=null;G.pendingUpgrade=null;render();});
+  on('btnCloseDeeds',()=>{G.modal=null;render();});
+  on('btnBackForge',()=>{G.modal='forge';G.pendingUpgrade=null;render();});
+  on('btnCloseRemPerm',()=>{G.modal=null;render();});
+  on('btnCloseFaceSwap',()=>{G.modal=null;G.pendingFaceSwap=null;G.phase=G.ad.diceFrozen?'ACTION':'ROLL';render();});
+  on('btnVisitorAccept',doVisitorAccept);
+  on('btnVisitorDecline',doVisitorDecline);
+  on('btnRestart',()=>{G=null;render();});
+  on('btnOpenSettings',()=>{S.showSettings=true;render();});
+  on('btnCloseSettings',()=>{S.showSettings=false;render();});
+  on('settingsOverlay',e=>{if(e.target.id==='settingsOverlay'){S.showSettings=false;render();}});
+  onAll('[data-theme]',e=>{S.theme=e.currentTarget.dataset.theme;applySettings();render();});
+  const fs=document.getElementById('fontSlider');
+  if(fs){
+    fs.addEventListener('input',()=>{S.fontSize=parseInt(fs.value);applySettings();
+      const lbl=document.getElementById('fontSizeVal');if(lbl)lbl.textContent=S.fontSize+'px';
+    });
+    fs.addEventListener('change',()=>render()); // only full re-render on release
+  }
+  const tc=document.getElementById('textColorInput');
+  if(tc){tc.addEventListener('input',()=>{S.textColor=tc.value;applySettings();});}
+  on('btnResetTextColor',()=>{S.textColor='';applySettings();render();});
+  onAll('.forge-card.can[data-forge]',e=>{
+    const u=FORGE.find(x=>x.faceId===e.currentTarget.dataset.forge);if(!u)return;
+    const free=G.ad.freeForge&&G.ad.fr>0;
+    if(!free&&!canAfford(G.resources,u.cost))return;
+    G.pendingUpgrade=u;G.modal='forge_face';render();
+  });
+  onAll('.forge-card.can[data-newdie]',e=>{
+    const idx=parseInt(e.currentTarget.dataset.newdie),opt=EXTRA_DICE[idx];
+    if(!opt||!canAfford(G.resources,opt.cost))return;
+    G.resources=spend(G.resources,opt.cost);G.dice.push([...opt.starts]);
+    addLog({msg:`🎲 Forged a new die! Now rolling ${G.dice.length} dice per season.`,cls:'log-good'});
+    G.modal=null;render();
+  });
+  onAll('.face-btn:not(.is-perm)',e=>{
+    if(G.modal==='faceswap'){
+      const di=parseInt(e.currentTarget.dataset.die),fi=parseInt(e.currentTarget.dataset.face);
+      if(isPerm(di,fi))return;
+      if(!G.pendingFaceSwap){G.pendingFaceSwap={di,fi};render();}
+      else{doFaceSwap(G.pendingFaceSwap.di,G.pendingFaceSwap.fi,di,fi);}
+    } else {
+      doForge(parseInt(e.currentTarget.dataset.die),parseInt(e.currentTarget.dataset.face));
+    }
+  });
+  // Legendary faces can also target perm curse faces
+  onAll('.face-btn.is-perm',e=>{
+    if(G.modal==='forge_face'&&G.pendingUpgrade?.isLegendary){
+      doForge(parseInt(e.currentTarget.dataset.die),parseInt(e.currentTarget.dataset.face));
+    }
+  });
+  onAll('.bld-card.buyable',e=>doBuyBuilding(e.currentTarget.dataset.bldid));
+  onAll('[data-permidx]',e=>doRemovePermanent(parseInt(e.currentTarget.dataset.permidx)));
+  // ── Keyboard shortcuts — bound once globally, not per-render ───────────────
+  if(!window._kbBound){
+    window._kbBound=true;
+    document.addEventListener('keydown',e=>{
+      if(!G)return;
+      if(e.key==='Escape'){
+        if(S.showSettings){S.showSettings=false;render();return;}
+        if(G.modal){G.modal=null;G.pendingUpgrade=null;G.pendingFaceSwap=null;render();return;}
+      }
+      if((e.key===' '||e.key==='Enter')&&e.target===document.body){
+        if(G.phase==='ROLL'&&!G.rolling&&!G.ad.diceFrozen){e.preventDefault();doRoll();}
+        else if(G.phase==='CARD'&&G.pendingCard){e.preventDefault();doDismissCard();}
+      }
+    });
+  }
+}
+
+// ═══════════════════════════
+//  GAME ACTIONS
+// ═══════════════════════════
+function doRoll(){
+  if(G.rolling)return;
+  if(G.ad.diceFrozen){addLog({msg:'🫥 Your dice are frozen by dark magic — cannot roll!',cls:'log-perm'});return;}
+  // First roll always allowed; subsequent rolls only if extraRoll is active
+  if(G.rollCount>0&&!G.ad.extraRoll){return;}
+  const winter=isWinter(G.season);
+  const allDice=winter?[...G.dice,[...DIE_WINTER]]:G.dice;
+  const rolls=allDice.map((die,di)=>{
+    const isPlayerDie=di<G.dice.length;
+    const isLoaded=isPlayerDie&&G.loadedDice.includes(di);
+    let idx;
+    if(isLoaded&&Math.random()<0.6){
+      const negIdxs=die.map((fid,fi)=>({fid,fi})).filter(x=>F[x.fid].neg);
+      if(negIdxs.length){idx=negIdxs[Math.floor(Math.random()*negIdxs.length)].fi;}
+      else{idx=Math.floor(Math.random()*6);}
+    } else {
+      idx=Math.floor(Math.random()*6);
+    }
+    return{idx,face:F[die[idx]],isWinterDie:!isPlayerDie,dieIdx:di,faceIdx:idx};
+  });
+  G._pendingRolls=rolls;G.rolling=true;G.rollGen++;G.phase='ROLL';
+  if(G.ad.extraRoll&&G.rollCount>0)G.ad.extraRoll=false; // consume extra roll on 2nd roll
+  G.rollCount++;
+  render();
+}
+
+function checkAllCursedDie(){
+  // Instant loss if any single *player* die has ALL 6 faces as curse faces
+  for(let di=0;di<G.dice.length;di++){
+    const allCursed=G.dice[di].every(fid=>F[fid].neg);
+    if(allCursed){
+      G.wonGame=false;G.phase='GAME_OVER';
+      G.deathReason=`Die ${di+1} was entirely consumed by curse faces — the dark forces have overwhelmed your kingdom!`;
+      addLog({msg:`💀 Die ${di+1} is fully cursed! The kingdom crumbles!`,cls:'log-perm'});
+      return true;
+    }
+  }
+  return false;
+}
+function applyRollResults(rolls){
+  let grain=0,gold=0,hammer=0,glory=0;const negs=[];
+  rolls.forEach(r=>{grain+=r.face.grain;gold+=r.face.gold;hammer+=r.face.hammer;glory+=r.face.glory;if(r.face.neg)negs.push(r.face.negEvent);});
+  G.resources.grain =Math.max(0,(G.resources.grain ||0)+grain);
+  G.resources.gold  =Math.max(0,(G.resources.gold  ||0)+gold);
+  G.resources.hammer=Math.max(0,(G.resources.hammer||0)+hammer);
+  G.glory           =Math.max(0,G.glory+glory);
+  const gains=[grain?`🌾${grain>0?'+':''}${grain}`:'',gold?`💰${gold>0?'+':''}${gold}`:'',hammer?`⚒️${hammer>0?'+':''}${hammer}`:'',glory?`⚜️${glory>0?'+':''}${glory}`:''].filter(Boolean).join(' ');
+  const winterRoll=rolls.find(r=>r.isWinterDie);
+  const regularRollsSyms=rolls.filter(r=>!r.isWinterDie).map(r=>r.face.sym).join(' ');
+  const winterPart=winterRoll?` ❄️[${winterRoll.face.sym}]`:'';
+  addLog({msg:`🎲 Rolled: ${regularRollsSyms}${winterPart} → ${gains||'nothing'}`,cls:negs.length?'log-neg':''});
+  if(winterRoll&&winterRoll.face.neg)addLog({msg:`❄️ Winter Curse: ${winterRoll.face.negEvent}`,cls:'log-cb'});
+  // Check if any infected face was rolled — spread infection
+  if(G.infections&&G.infections.length){
+    rolls.forEach(r=>{
+      if(r.isWinterDie)return;
+      if(G.infections.some(inf=>inf.die===r.dieIdx&&inf.face===r.faceIdx)){
+        spreadInfection();
+      }
+    });
+  }
+  if(negs.length)G.negEvent=negs.join(' | ');else G.negEvent=null;
+  if(G.glory>=G.diff.target){G.wonGame=true;G.phase='GAME_OVER';}
+}
+function doForge(dieIdx,faceIdx){
+  const u=G.pendingUpgrade;if(!u)return;
+  // Legendary faces can replace permanent curses — otherwise block perm faces
+  const isLegendaryInstall=u.isLegendary&&isPerm(dieIdx,faceIdx);
+  if(isPerm(dieIdx,faceIdx)&&!isLegendaryInstall)return;
+  const free=G.ad.freeForge&&G.ad.fr>0;
+  // For legendary visitor installs, cost is already paid — skip afford check
+  if(!u.isLegendary&&!free&&!canAfford(G.resources,u.cost))return;
+  const oldFace=F[G.dice[dieIdx][faceIdx]];
+  // If legendary replacing a perm curse, remove from permanentCurses
+  if(isLegendaryInstall){
+    G.permanentCurses=G.permanentCurses.filter(p=>!(p.die===dieIdx&&p.face===faceIdx));
+    addLog({msg:`⭐ Legendary power shatters the permanent curse on Die ${dieIdx+1}!`,cls:'log-cg'});
+  }
+  G.dice[dieIdx][faceIdx]=u.faceId;
+  // Remove infection if face was infected
+  if(G.infections)G.infections=G.infections.filter(inf=>!(inf.die===dieIdx&&inf.face===faceIdx));
+  // If forging away the last negative face on a loaded die, remove the loaded curse
+  const stillNeg=G.dice[dieIdx].some(fid=>F[fid].neg);
+  if(!stillNeg&&G.loadedDice.includes(dieIdx)){
+    G.loadedDice=G.loadedDice.filter(i=>i!==dieIdx);
+    addLog({msg:`⚖️ Die ${dieIdx+1} is no longer loaded — the curse is broken!`,cls:'log-good'});
+  }
+  if(u.isLegendary){addLog({msg:`⭐ Legendary Face installed on Die ${dieIdx+1}: ${oldFace.sym}→${F[u.faceId].sym} ${F[u.faceId].label}!`,cls:'log-cg'});}
+  else if(free){G.ad.freeForge=false;addLog(`⚒️ FREE Forge Die ${dieIdx+1}: ${oldFace.sym}→${F[u.faceId].sym}`);}
+  else{G.resources=spend(G.resources,u.cost);addLog(`⚒️ Forged Die ${dieIdx+1}: ${oldFace.sym}→${F[u.faceId].sym}`);}
+  G.ad.fr=Math.max(0,G.ad.fr-1);
+  G.modal=null;G.pendingUpgrade=null;
+  checkAllCursedDie();
+  render();
+}
+function doBuyDeed(deedId){ doBuyBuilding(deedId); } // backward compat
+function doBuyBuilding(bldId){
+  const b=getBuildingData(bldId);
+  // Handle legacy special deeds (purify/quarantine from DEEDS array)
+  if(!b){
+    const deed=DEEDS.find(d=>d.id===bldId);
+    if(!deed||!canAfford(G.resources,deed.cost))return;
+    G.resources=spend(G.resources,deed.cost);G.glory+=deed.glory;
+    G.deeds.push(bldId);
+    addLog({msg:`📜 ${deed.icon} ${deed.name}`,cls:'log-cg'});
+    G.modal=null;G.ad.deedDone=true;
+    if(deed.special==='removePermanent'){G.permanentCurses.length>0?G.modal='removePerm':addLog({msg:'✨ No permanent curses to remove.',cls:'log-good'});}
+    if(deed.special==='cureInfection'){cureAllInfections();}
+    if(G.glory>=G.diff.target){G.wonGame=true;G.phase='GAME_OVER';G.modal=null;}
+    render();return;
+  }
+  if(!isBuildingUnlocked(b))return;
+  const nextT=getNextTier(b);
+  if(!nextT||!canAfford(G.resources,nextT.cost))return;
+  G.resources=spend(G.resources,nextT.cost);
+  G.glory+=nextT.glory;
+  if(!G.buildings)G.buildings={};
+  G.buildings[bldId]=(G.buildings[bldId]||0)+1;
+  const newTier=G.buildings[bldId];
+  addLog({msg:`🏰 ${nextT.icon||b.icon} ${b.name} → Tier ${newTier}: ${nextT.name}! +${nextT.glory}⚜️`,cls:'log-cg'});
+  G.ad.deedDone=true;
+  // Handle specials
+  if(nextT.special==='removePermanent'){G.permanentCurses.length>0?G.modal='removePerm':addLog({msg:'✨ Purification: no permanent curses found.',cls:'log-good'});}
+  else if(nextT.special==='removePermanent2'){
+    if(G.permanentCurses.length>0){G.modal='removePerm';}
+    else{addLog({msg:'✨ No curses to remove.',cls:'log-good'});}
+  }
+  else if(nextT.special==='removePermanentAll'){
+    const n=G.permanentCurses.length;
+    G.permanentCurses.forEach(p=>{G.dice[p.die][p.face]='GLORY_1';});
+    G.permanentCurses=[];
+    addLog({msg:`✨ Sacred Sanctum: ALL ${n} permanent curses cleansed!`,cls:'log-perm'});
+    G.modal=null;
+  }
+  else if(nextT.special==='cureInfection'||nextT.special==='cureInfectionPerm'){cureAllInfections();}
+  else if(nextT.special==='unlockRare'){addLog({msg:'🏭 Dwarven Foundry built — Rare forge tier UNLOCKED!',cls:'log-cg'});}
+  else{G.modal=null;}
+  if(G.glory>=G.diff.target){G.wonGame=true;G.phase='GAME_OVER';G.modal=null;}
+  render();
+}
+function doRemovePermanent(idx){
+  const p=G.permanentCurses[idx];if(!p)return;
+  const oldFace=F[G.dice[p.die][p.face]];
+  G.dice[p.die][p.face]='GLORY_1';G.permanentCurses.splice(idx,1);
+  addLog({msg:`✨ Purification Rite: Die ${p.die+1} cleansed! ${oldFace.sym} → ⚜️`,cls:'log-perm'});
+  G.modal=null;render();
+}
+function doFaceSwap(di1,fi1,di2,fi2){
+  if(di1===di2&&fi1===fi2)return;
+  if(isPerm(di1,fi1)||isPerm(di2,fi2)){addLog({msg:'⛔ Cannot swap permanent curse faces!',cls:'log-perm'});return;}
+  const tmp=G.dice[di1][fi1];
+  G.dice[di1][fi1]=G.dice[di2][fi2];
+  G.dice[di2][fi2]=tmp;
+  // Update loaded curse: if we swapped in/out a neg face check if loaded status should change
+  [di1,di2].forEach(di=>{
+    const stillNeg=G.dice[di].some(fid=>F[fid].neg);
+    if(!stillNeg&&G.loadedDice.includes(di)){G.loadedDice=G.loadedDice.filter(i=>i!==di);addLog({msg:`⚖️ Die ${di+1} loaded curse lifted!`,cls:'log-good'});}
+  });
+  addLog({msg:`🃏 Face swap! Die ${di1+1} ↔ Die ${di2+1}`,cls:'log-good'});
+  G.modal=null;G.pendingFaceSwap=null;G.ad.faceSwap=false;
+  G.phase=G.ad.diceFrozen?'ACTION':'ROLL';
+  render();
+}
+function doBuyDie(){
+  const idx=G.dice.length-2,opt=EXTRA_DICE[idx];
+  if(!opt||!canAfford(G.resources,opt.cost)||G.dice.length>=4)return;
+  G.resources=spend(G.resources,opt.cost);G.dice.push([...opt.starts]);
+  addLog({msg:`🎲 Forged ${G.dice.length===3?'3rd':'4th'} die! Now rolling ${G.dice.length} dice/season.`,cls:'log-good'});
+  G.ad.dieBought=true;render();
+}
+function doEndSeason(){
+  G.negEvent=null;
+  // Check death before applying production — don't give resources on a losing turn
+  if(G.permanentCurses.length>=G.DEATH_THRESHOLD){
+    G.wonGame=false;G.phase='GAME_OVER';
+    G.deathReason=`${G.permanentCurses.length} permanent curses have overwhelmed the kingdom after ${G.season} seasons.`;
+    addLog({msg:`💀 The kingdom falls after ${G.season} seasons!`,cls:'log-perm'});
+    render();return;
+  }
+  applyProd();
+  // Check win after production (production could push over target)
+  if(G.glory>=G.diff.target){G.wonGame=true;G.phase='GAME_OVER';G.modal=null;render();return;}
+  G.season++;G.ad={fr:1,frMax:1,freeForge:false,skipForge:false,deedDone:false,dieBought:false,extraRoll:false,diceFrozen:false,faceSwap:false};
+  G.lastRolls=null;G.rolling=false;G._pendingRolls=null;G.rollCount=0;
+  const card=drawCard();G.pendingCard=card;G.phase='CARD';
+  addLog(`${sIcon(G.season)} ${sName(G.season)}, Season ${G.season} begins.`);
+  if(isWinter(G.season))addLog({msg:'❄️ Winter is here — the Winter Die joins the roll! Brace for hardship.',cls:'log-cb'});
+  render();
+}
+function doDismissCard(){
+  const card=G.pendingCard;if(!card)return;
+  applyCardEffect(card);G.pendingCard=null;
+  // If modal set (faceswap, visitor), stay in that modal flow
+  if(G.modal==='faceswap'||G.modal==='visitor'){render();return;}
+  // extraRoll: stay on ROLL phase so player can roll again; don't go to ACTION
+  G.phase=G.ad.diceFrozen?'ACTION':'ROLL';
+  if(G.permanentCurses.length>=G.DEATH_THRESHOLD){
+    G.wonGame=false;G.phase='GAME_OVER';
+    G.deathReason=`The Witch's Coven placed ${G.permanentCurses.length} permanent curses upon the land.`;
+    addLog({msg:'💀 Permanent curses overwhelm the kingdom!',cls:'log-perm'});
+  }
+  if(checkAllCursedDie()){render();return;}
+  render();
+}
+
+function doVisitorAccept(){
+  const v=G.pendingVisitor;if(!v)return;
+  const face=F[v.faceId];
+  if(!canAfford(G.resources,v.cost)){addLog({msg:`${v.icon} Not enough resources — ${v.name} departs.`,cls:'log-cb'});G.modal=null;G.pendingVisitor=null;render();return;}
+  G.resources=spend(G.resources,v.cost);
+  G.modal='forge_face';
+  G.pendingUpgrade={faceId:v.faceId,cost:{},isLegendary:true};
+  addLog({msg:`${v.icon} ${v.name}: legendary face ${face.sym} ${face.label} installed!`,cls:'log-cg'});
+  G.pendingVisitor=null;
+  render();
+}
+function doVisitorDecline(){
+  const v=G.pendingVisitor;
+  if(v)addLog({msg:`${v.icon} ${v.name} shrugs and departs.`,cls:'log-prod'});
+  G.modal=null;G.pendingVisitor=null;
+  G.phase=G.ad.diceFrozen?'ACTION':'ROLL';
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
